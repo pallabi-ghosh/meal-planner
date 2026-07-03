@@ -1,0 +1,30 @@
+{
+  "household": {
+    "members": ["him", "her", "toddler"],
+    "location": "Denmark",
+    "budgetTargetDKK": 800,
+    "budgetCeilingDKK": 1500,
+    "notes": "Real spend runs ~700-800 because leftovers carry days. Model pantry carryover or the plan over-shops."
+  },
+  "preferences": [
+    { "scope": "him",       "kind": "hardRule", "text": "Oats daily for breakfast" },
+    { "scope": "her",       "kind": "hardRule", "text": "Wholegrain toast + avocado + poached egg on weekday breakfasts" },
+    { "scope": "household", "kind": "hardRule", "text": "Pancakes on weekend mornings" },
+    { "scope": "household", "kind": "hardRule", "text": "No quinoa (tried it, disliked it)" },
+    { "scope": "household", "kind": "hardRule", "text": "No rice at lunch; re-serve leftovers as salads, bowls or wraps" },
+    { "scope": "household", "kind": "hardRule", "text": "Rice and roti are fine at dinner" },
+    { "scope": "household", "kind": "hardRule", "text": "Keep the leftover-into-lunch structure (saves cost and waste)" },
+    { "scope": "household", "kind": "ratio",    "text": "~60/40 non-veg to veg, counting fish and eggs as non-veg" },
+    { "scope": "household", "kind": "ratio",    "text": "~4 legume meals per week (lentils, chickpeas)" },
+    { "scope": "household", "kind": "ratio",    "text": "Chicken thighs, not breast" },
+    { "scope": "household", "kind": "ratio",    "text": "Feature mushrooms through the week; include a mushroom risotto dinner" },
+    { "scope": "household", "kind": "friction", "text": "Cold leftover salad bowls lose appeal by midweek; offer wraps as a fallback" },
+    { "scope": "household", "kind": "friction", "text": "Avocado is perishable and price-variable in Danish supermarkets" },
+    { "scope": "household", "kind": "friction", "text": "Watch cholesterol if risotto and a roast land in the same week" }
+  ],
+  "pantryCarryover": [
+    { "name": "Mixed dals (lentils)", "carriesOverDays": 2 },
+    { "name": "Leftover vegetables",  "carriesOverDays": 2 }
+  ],
+  "_seedNotes": "Confirmed by repetition over two weeks. One-offs (e.g. coffee restock) are deliberately NOT seeded. Poha/upma removed - they don't reflect real habits."
+}
