@@ -54,7 +54,7 @@ export async function sendWeekEmail(week: Week, grocery: GroceryItem[]) {
   }
 
   return resend.emails.send({
-    from: "Meal Planner <pallabighoshdas@gmail.com>",
+    from: "Meal Planner <onboarding@resend.dev>",
     to,
     subject: `Meal plan — week of ${week.startDate}`,
     html: renderHtml(week, grocery),

@@ -47,12 +47,8 @@ export default function GenerateButton({ onGenerated }: GenerateButtonProps) {
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      style={{ padding: "10px 16px", fontSize: 14, cursor: "pointer" }}
-    >
-      {loading ? "Generating…" : "Generate week & email it"}
+    <button onClick={handleClick} disabled={loading} className="btn">
+      {loading ? "Generating…" : "↻ Generate week & email it"}
     </button>
   );
 }

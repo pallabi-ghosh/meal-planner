@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meal App Wireframes</title>
+<style>
+  :root{
+    --ink:#1a1a2e; --muted:#6b7280; --line:#d1d5db; --bg:#f4f4f6;
+    --accent:#2f6f4f; --accent-soft:#dcefe3; --warn:#b45309; --warn-soft:#fdecd0;
+    --blue:#1d4ed8; --blue-soft:#dbeafe; --card:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:ui-monospace,'SF Mono',Menlo,monospace;background:var(--bg);color:var(--ink);padding:28px;line-height:1.45}
+  h1{font-size:18px;margin-bottom:4px;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;max-width:1100px}
+  .screen{background:var(--card);border:2px solid var(--ink);border-radius:10px;overflow:hidden;box-shadow:4px 4px 0 var(--ink)}
+  .scr-head{background:var(--ink);color:#fff;padding:9px 14px;font-size:12px;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+  .scr-tag{font-size:10px;opacity:.7}
+  .scr-body{padding:14px}
+  .label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:14px 0 6px}
+  .label:first-child{margin-top:0}
+  .box{border:1.5px dashed var(--line);border-radius:7px;padding:10px;margin-bottom:9px;font-size:12px}
+  .chip{display:inline-block;border:1.5px solid var(--ink);border-radius:20px;padding:3px 10px;font-size:11px;margin:3px 3px 3px 0;background:#fff}
+  .chip.on{background:var(--accent-soft);border-color:var(--accent)}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;border:1.5px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px}
+  .meal{border-left:4px solid var(--accent);background:var(--accent-soft)}
+  .kid{font-size:10px;color:var(--accent);display:block;margin-top:2px}
+  .btn{background:var(--ink);color:#fff;border:none;border-radius:7px;padding:8px 12px;font-size:11px;font-family:inherit;cursor:pointer;letter-spacing:.5px}
+  .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+  .small{font-size:10px;color:var(--muted)}
+  .tot{display:flex;justify-content:space-between;font-size:13px;font-weight:bold;border-top:2px solid var(--ink);padding-top:8px;margin-top:6px}
+  .budget{background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:7px;padding:8px;font-size:11px;text-align:center;color:var(--accent);margin-bottom:10px}
+  .ovr{background:var(--blue-soft);border:1.5px solid var(--blue);border-radius:7px;padding:10px;margin-top:8px}
+  .pantry{background:var(--warn-soft);border:1.5px solid var(--warn);border-radius:7px;padding:8px;font-size:11px;color:var(--warn);margin-bottom:10px}
+  .qrow{display:flex;gap:6px;margin-top:6px}
+  .qbtn{flex:1;border:1.5px solid var(--ink);border-radius:7px;padding:6px;font-size:11px;text-align:center;background:#fff;cursor:pointer}
+  .qbtn.sel{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+  .note{font-size:10px;color:var(--muted);margin-top:10px;font-style:italic}
+</style>
+</head>
+<body>
+  <h1>MEAL PLANNER — v1 WIREFRAMES</h1>
+  <div class="sub">grounded in your real week · grocery = the commitment · schedule = flexible · ugly-on-purpose</div>
+
+  <div class="grid">
+
+    <!-- SCREEN 1 -->
+    <div class="screen">
+      <div class="scr-head"><span>① WEEK VIEW</span><span class="scr-tag">home</span></div>
+      <div class="scr-body">
+        <div class="pantry">🥬 PANTRY CARRYOVER: dal, spinach, carrots — <b>covers ~2 days</b>, shop less</div>
+        <div class="budget">EST. SHOP THIS WEEK: <b>780 DKK</b> · real avg 700–800</div>
+
+        <div class="label">Sunday</div>
+        <div class="row meal"><span>🍳 Oats + berries</span><span class="small">B</span></div>
+        <div class="row meal"><span>🥗 Pasta salad <i>(no rice)</i><span class="kid">toddler: plain pasta + cheese</span></span><span class="small">L</span></div>
+        <div class="row meal"><span>🐟 Baked salmon + greens</span><span class="small">D</span></div>
+
+        <div class="label">Monday</div>
+        <div class="row meal"><span>🥣 Chai + poha</span><span class="small">B</span></div>
+        <div class="row" style="opacity:.6"><span>+ leftover salmon → bowl</span><span class="small">L</span></div>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn">↻ Regenerate week</button>
+          <button class="btn ghost">View grocery list →</button>
+        </div>
+        <div class="note">Tap any meal to swap or log what you actually ate.</div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2 -->
+    <div class="screen">
+      <div class="scr-head"><span>② LOG / OVERRIDE</span><span class="scr-tag">the feedback loop</span></div>
+      <div class="scr-body">
+        <div class="box" style="border-style:solid;border-color:var(--ink)">
+          📧 <b>Morning ping:</b> "Did you have <b>oats + berries</b> for breakfast?"
+        </div>
+        <div class="qrow">
+          <div class="qbtn sel">✓ Yes, ate it</div>
+          <div class="qbtn">✗ No, something else</div>
+        </div>
+
+        <div class="ovr">
+          <div class="label" style="margin-top:0;color:var(--blue)">What did you eat instead?</div>
+          <div class="box" style="background:#fff;border-style:solid">🍓 rhubarb &nbsp;|&nbsp; ☕ chai + biscuit &nbsp; <span class="small">[type…]</span></div>
+          <div class="small">→ logs substitution · oats reject count +1 · updates pantry</div>
+        </div>
+
+        <div class="label">Push your own suggestion</div>
+        <div class="box">"For breakfast I usually like ___" → becomes a Preference the LLM respects next week</div>
+
+        <button class="btn" style="width:100%;margin-top:10px">Save log</button>
+        <div class="note">One tap = the common case. Friction here kills the whole loop.</div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3 -->
+    <div class="screen">
+      <div class="scr-head"><span>③ GROCERY + PREFS</span><span class="scr-tag">code-computed</span></div>
+      <div class="scr-body">
+        <div class="label">Grocery list (auto, minus pantry)</div>
+        <div class="row"><span>☐ Salmon fillet ×2</span><span class="small">95 DKK</span></div>
+        <div class="row"><span>☐ Wholegrain pasta</span><span class="small">18 DKK</span></div>
+        <div class="row"><span>☐ Oats 1kg</span><span class="small">22 DKK</span></div>
+        <div class="row" style="opacity:.45;text-decoration:line-through"><span>Dal — have it</span><span class="small">pantry</span></div>
+        <div class="tot"><span>TOTAL</span><span>780 DKK</span></div>
+        <button class="btn ghost" style="width:100%;margin-top:8px">Copy to Reminders</button>
+
+        <div class="label">What I've learned about you</div>
+        <div class="box" style="border-color:var(--accent)">
+          <span class="chip on">no rice @ lunch ✓</span>
+          <span class="chip on">cholesterol-aware ✓</span>
+          <span class="chip">oats: rejected 4/4 ✗</span>
+          <span class="chip on">loves: chai + poha</span>
+        </div>
+        <div class="small">Editable. You own this list, not the LLM.</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="note" style="max-width:1100px;margin-top:20px">⚠ Build order: Screen ① + grocery logic first (your real value). Screen ② next (the loop). Email/cron last. Resist push notifications until email has run for weeks.</div>
+</body>
+</html>
