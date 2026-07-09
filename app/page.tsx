@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GenerateButton from "./components/GenerateButton";
-import seed from "@/data/seed-preferences.json";
+import LogPanel from "./components/LogPanel";
+import GroceryPanel from "./components/GroceryPanel";
 import type { SeedData } from "@/types";
-
-const seedData = seed as SeedData;
 
 const SLOT_BADGE: Record<string, string> = {
   breakfast: "B",
@@ -16,27 +15,41 @@ const SLOT_BADGE: Record<string, string> = {
 
 const SLOT_ORDER = ["breakfast", "lunch", "snack", "dinner"];
 
+interface MealData {
+  id?: string;
+  date: string;
+  slot: string;
+  forWhom: string;
+  dish: string;
+  ingredients: string[];
+}
+
+interface WeekData {
+  startDate: string;
+  meals: MealData[];
+  budgetTargetDKK?: number;
+  estimatedCostDKK?: number;
+}
+
+interface GroceryItemData {
+  name: string;
+  quantity: string;
+  category: string;
+  estPriceDKK: number;
+  fromPantry: boolean;
+}
+
+interface MealLogData {
+  mealId: string;
+  eater: string;
+  ate: "yes" | "substituted";
+  actualDish?: string;
+}
+
 interface GenerationResponse {
   ok: boolean;
-  week?: {
-    startDate: string;
-    meals: Array<{
-      date: string;
-      slot: string;
-      forWhom: string;
-      dish: string;
-      ingredients: string[];
-    }>;
-    budgetTargetDKK?: number;
-    estimatedCostDKK?: number;
-  };
-  grocery?: Array<{
-    name: string;
-    quantity: string;
-    category: string;
-    estPriceDKK: number;
-    fromPantry: boolean;
-  }>;
+  week?: WeekData;
+  grocery?: GroceryItemData[];
   message?: string;
 }
 
@@ -47,19 +60,50 @@ function dayLabel(date: string): string {
 }
 
 export default function Home() {
-  const [result, setResult] = useState<GenerationResponse | null>(null);
+  const [weekData, setWeekData] = useState<WeekData | null>(null);
+  const [grocery, setGrocery] = useState<GroceryItemData[]>([]);
+  const [mealLogs, setMealLogs] = useState<MealLogData[]>([]);
+  const [preferencesData, setPreferencesData] = useState<SeedData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const dayGroups = result?.week?.meals.reduce<Record<string, typeof result.week.meals>>((acc, meal) => {
+  async function refreshAll() {
+    const [weekRes, prefRes] = await Promise.all([fetch("/api/week"), fetch("/api/preferences")]);
+    const weekJson = await weekRes.json();
+    const prefJson = (await prefRes.json()) as SeedData;
+    setWeekData(weekJson.week);
+    setGrocery(weekJson.grocery ?? []);
+    setMealLogs(weekJson.mealLogs ?? []);
+    setPreferencesData(prefJson);
+  }
+
+  useEffect(() => {
+    refreshAll();
+  }, []);
+
+  function handleGenerated(data: GenerationResponse) {
+    if (data.ok) {
+      setErrorMessage(null);
+      refreshAll();
+    } else {
+      setErrorMessage(data.message ?? "Generation failed.");
+    }
+  }
+
+  const dayGroups = weekData?.meals.reduce<Record<string, MealData[]>>((acc, meal) => {
     if (!acc[meal.date]) acc[meal.date] = [];
     acc[meal.date].push(meal);
     return acc;
   }, {}) ?? {};
 
   const sortedDates = Object.keys(dayGroups).sort();
-  const grocery = result?.grocery ?? [];
-  const pantryPreview = seedData.household ? seedData : null;
-  const hardRules = seedData.preferences.filter((p) => p.kind === "hardRule");
-  const otherPrefs = seedData.preferences.filter((p) => p.kind !== "hardRule");
+  const groceryTotal = grocery.filter((item) => !item.fromPantry).reduce((sum, item) => sum + item.estPriceDKK, 0);
+  const hardRules = preferencesData?.preferences.filter((p) => p.kind === "hardRule") ?? [];
+  const otherPrefs = preferencesData?.preferences.filter((p) => p.kind !== "hardRule") ?? [];
+
+  function prefLabel(pref: SeedData["preferences"][number]): string {
+    if (!pref.acceptCount && !pref.rejectCount) return pref.text;
+    return `${pref.text} (✓${pref.acceptCount ?? 0}/✗${pref.rejectCount ?? 0})`;
+  }
 
   return (
     <main style={{ padding: 28 }}>
@@ -74,16 +118,18 @@ export default function Home() {
             <span className="scr-tag">home</span>
           </div>
           <div className="scr-body">
-            {pantryPreview && pantryPreview.pantryCarryover.length > 0 ? (
+            {preferencesData && preferencesData.pantryCarryover.length > 0 ? (
               <div className="pantry">
-                🥬 PANTRY CARRYOVER: {pantryPreview.pantryCarryover.map((p) => p.name).join(", ")}
+                🥬 PANTRY CARRYOVER: {preferencesData.pantryCarryover.map((p) => p.name).join(", ")}
               </div>
             ) : null}
 
             <div className="budget">
-              {result?.week?.estimatedCostDKK != null
-                ? `EST. SHOP THIS WEEK: ${result.week.estimatedCostDKK} DKK`
-                : `TARGET: ~${seedData.household.budgetTargetDKK} DKK · ceiling ${seedData.household.budgetCeilingDKK} DKK`}
+              {grocery.length > 0
+                ? `EST. SHOP THIS WEEK: ${groceryTotal} DKK`
+                : preferencesData
+                ? `TARGET: ~${preferencesData.household.budgetTargetDKK} DKK · ceiling ${preferencesData.household.budgetCeilingDKK} DKK`
+                : "Loading…"}
             </div>
 
             {sortedDates.length === 0 ? (
@@ -96,7 +142,7 @@ export default function Home() {
                     .slice()
                     .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
                     .map((meal, index) => (
-                      <div className="row meal" key={`${date}-${meal.slot}-${index}`}>
+                      <div className="row meal" key={meal.id ?? `${date}-${meal.slot}-${index}`}>
                         <span>
                           {meal.dish}
                           {meal.forWhom !== "household" ? (
@@ -111,36 +157,25 @@ export default function Home() {
             )}
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <GenerateButton onGenerated={setResult} />
+              <GenerateButton onGenerated={handleGenerated} />
               <a href="#grocery" className="btn ghost" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
                 View grocery list →
               </a>
             </div>
-            <div className="note">Tap-to-swap and daily logging aren&rsquo;t built yet — see Screen ②.</div>
+            <div className="note">Tap-to-swap isn&rsquo;t built yet — log substitutions in Screen ② instead.</div>
 
-            {result && !result.ok ? <div className="error">{result.message ?? "Generation failed."}</div> : null}
+            {errorMessage ? <div className="error">{errorMessage}</div> : null}
           </div>
         </div>
 
-        {/* SCREEN 2 — LOG / OVERRIDE (placeholder, not built) */}
-        <div className="screen disabled">
+        {/* SCREEN 2 — LOG / OVERRIDE */}
+        <div className="screen">
           <div className="scr-head">
             <span>② LOG / OVERRIDE</span>
-            <span className="scr-tag">phase 2 — not built yet</span>
+            <span className="scr-tag">the feedback loop</span>
           </div>
           <div className="scr-body">
-            <div className="box">📧 Morning ping: &ldquo;Did you have the planned breakfast?&rdquo;</div>
-            <div className="qrow">
-              <div className="qbtn">✓ Yes, ate it</div>
-              <div className="qbtn">✗ No, something else</div>
-            </div>
-            <div className="ovr">
-              <div className="label" style={{ marginTop: 0, color: "var(--blue)" }}>
-                What did you eat instead?
-              </div>
-              <div className="small">→ will log a substitution and update preference counts</div>
-            </div>
-            <div className="note">This screen will close the feedback loop. Coming in Phase 2.</div>
+            <LogPanel meals={weekData?.meals ?? []} mealLogs={mealLogs} onLogged={refreshAll} />
           </div>
         </div>
 
@@ -148,47 +183,27 @@ export default function Home() {
         <div className="screen" id="grocery">
           <div className="scr-head">
             <span>③ GROCERY + PREFS</span>
-            <span className="scr-tag">code-computed</span>
+            <span className="scr-tag">yours to edit</span>
           </div>
           <div className="scr-body">
-            <div className="label">Grocery list (auto, minus pantry)</div>
-            {grocery.length === 0 ? (
-              <div className="box">Generate a week to see the grocery list here.</div>
-            ) : (
-              <>
-                {grocery.map((item) => (
-                  <div
-                    className="row"
-                    key={item.name}
-                    style={item.fromPantry ? { opacity: 0.45, textDecoration: "line-through" } : undefined}
-                  >
-                    <span>{item.fromPantry ? item.name : `☐ ${item.name} — ${item.quantity}`}</span>
-                    <span className="small">{item.fromPantry ? "pantry" : `${item.estPriceDKK} DKK`}</span>
-                  </div>
-                ))}
-                <div className="tot">
-                  <span>TOTAL</span>
-                  <span>{result?.week?.estimatedCostDKK ?? 0} DKK</span>
-                </div>
-              </>
-            )}
+            <GroceryPanel grocery={grocery} onChanged={refreshAll} />
 
             <div className="label">What I&rsquo;ve learned about you</div>
             <div className="box" style={{ borderColor: "var(--accent)" }}>
               {hardRules.map((pref) => (
                 <span className="chip on" key={pref.text}>
-                  {pref.text}
+                  {prefLabel(pref)}
                 </span>
               ))}
               {otherPrefs.map((pref) => (
                 <span className="chip" key={pref.text}>
-                  {pref.text}
+                  {prefLabel(pref)}
                 </span>
               ))}
             </div>
             <div className="small">
-              These come from data/seed-preferences.json for now. An editable list with accept/reject
-              tracking arrives in Phase 2.
+              Editable via Screen ②&rsquo;s &ldquo;push your own suggestion&rdquo; box. Accept/reject
+              counts update as you log meals.
             </div>
           </div>
         </div>

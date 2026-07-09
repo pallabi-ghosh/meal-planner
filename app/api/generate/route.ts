@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import seed from "@/data/seed-preferences.json";
 import { buildGenerationPrompt } from "@/lib/prompt";
 import { buildGroceryList, estimateTotalDKK } from "@/lib/grocery";
 import { sendWeekEmail } from "@/lib/email";
-import type { SeedData, Week } from "@/types";
+import { getPreferencesData, saveCurrentWeek } from "@/lib/store";
+import type { Scope, Slot, Week } from "@/types";
+
+const VALID_SLOTS: Slot[] = ["breakfast", "lunch", "snack", "dinner"];
+const VALID_SCOPES: Scope[] = ["him", "her", "toddler", "household"];
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2";
@@ -46,6 +49,14 @@ function validateWeek(week: Week): void {
   }
 
   for (const meal of week.meals) {
+    if (!VALID_SLOTS.includes(meal.slot)) {
+      violations.push(`Meal "${meal.dish}" has an invalid slot value: "${meal.slot}".`);
+    }
+
+    if (!VALID_SCOPES.includes(meal.forWhom)) {
+      violations.push(`Meal "${meal.dish}" has an invalid forWhom value: "${meal.forWhom}".`);
+    }
+
     const dishText = `${meal.dish} ${meal.ingredients.join(" ")}`.toLowerCase();
 
     if (meal.slot === "lunch" && /\brice\b/.test(dishText)) {
@@ -112,28 +123,31 @@ async function generateWeekFromOllama(prompt: string): Promise<Week> {
 }
 
 export async function POST() {
-  const seedData = seed as SeedData;
+  const seedData = await getPreferencesData();
   const weekStart = new Date().toISOString().slice(0, 10);
   const prompt = buildGenerationPrompt(seedData, weekStart);
 
   let lastError: unknown;
+  const maxAttempts = 3;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const week = await generateWeekFromOllama(prompt);
       const grocery = buildGroceryList(week.meals, seedData.pantryCarryover);
       week.estimatedCostDKK = estimateTotalDKK(grocery);
 
+      const stored = await saveCurrentWeek(week, grocery);
+
       try {
-        await sendWeekEmail(week, grocery);
+        await sendWeekEmail(stored.week, stored.grocery);
       } catch (emailError) {
         console.error("Email delivery failed", emailError);
       }
 
-      return NextResponse.json({ ok: true, week, grocery });
+      return NextResponse.json({ ok: true, week: stored.week, grocery: stored.grocery });
     } catch (error) {
       lastError = error;
-      if (attempt === 1) {
+      if (attempt === maxAttempts - 1) {
         break;
       }
     }

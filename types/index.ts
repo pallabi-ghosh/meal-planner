@@ -21,11 +21,24 @@ export interface PantryItem {
 
 // What the LLM must return, per meal slot, per day.
 export interface Meal {
+  id?: string;          // assigned when a generated week is persisted; absent on raw LLM output
   date: string;        // ISO date, e.g. "2026-06-29"
   slot: Slot;
   forWhom: Scope;      // him | her | toddler | shared(household)
   dish: string;
   ingredients: string[];
+}
+
+export type AteStatus = "yes" | "substituted";
+
+// Logged after the fact — the feedback loop. Not produced by the LLM.
+export interface MealLog {
+  id: string;
+  mealId: string;
+  eater: Scope;
+  ate: AteStatus;
+  actualDish?: string;   // set when ate === "substituted"
+  loggedAt: string;      // ISO timestamp
 }
 
 export interface GroceryItem {

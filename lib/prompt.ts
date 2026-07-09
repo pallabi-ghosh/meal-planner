@@ -26,22 +26,21 @@ Pantry carryover:
 ${pantry || "(none)"}
 
 Return ONLY valid JSON with a top-level object containing a "week" property.
-The week object must match this shape:
+The week object must match this shape (this example row is illustrative only — write
+your own real dish for every meal):
 {
   "startDate": "${weekStart}",
   "meals": [
-    {
-      "date": "YYYY-MM-DD",
-      "slot": "breakfast|lunch|snack|dinner",
-      "forWhom": "him|her|toddler|household",
-      "dish": "short dish name",
-      "ingredients": ["ingredient 1", "ingredient 2"]
-    }
+    { "date": "YYYY-MM-DD", "slot": "breakfast", "forWhom": "him", "dish": "short dish name", "ingredients": ["ingredient 1", "ingredient 2"] }
   ],
   "budgetTargetDKK": ${seedData.household.budgetTargetDKK}
 }
+Field rules:
+- "slot" must be exactly one of these four words, never combined: breakfast, lunch, snack, dinner.
+- "forWhom" must be exactly one of these four words, never combined: him, her, toddler, household.
+- Never write a value like "breakfast|lunch|snack|dinner" — pick exactly one word per meal.
 Rules:
-- Create 7 days of meals with breakfast, lunch, snack, and dinner each day.
+- Create 7 days of meals with breakfast, lunch, snack, and dinner each day (28 meals total).
 - Keep lunch meals free of rice.
 - Do not include quinoa in any dish or ingredient.
 - Keep the plan realistic for the household and budget.

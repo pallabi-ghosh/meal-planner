@@ -4,3 +4,5 @@ node_modules
 tsconfig.tsbuildinfo
 .DS_Store
 *.log
+data/current-week.json
+data/meal-logs.json
