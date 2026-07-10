@@ -32,6 +32,7 @@ interface WeekData {
 }
 
 interface GroceryItemData {
+  id?: string;
   name: string;
   quantity: string;
   category: string;

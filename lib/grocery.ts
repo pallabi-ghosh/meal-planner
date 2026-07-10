@@ -84,6 +84,7 @@ export function buildGroceryList(
 
       const category = classifyCategory(parsed.name);
       seen.set(key, {
+        id: `g_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         name: parsed.name,
         quantity: parsed.quantity,
         category,

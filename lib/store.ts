@@ -44,8 +44,19 @@ export function assignMealIds(week: Week): Week {
   };
 }
 
+// Guarantees every item has a stable id, regardless of source (AI generation,
+// manual add, or older data saved before ids existed) — so two items that happen
+// to share a name (e.g. two "egg" entries) never collide as React keys or in
+// toggle/remove lookups by id.
+function assignGroceryIds(grocery: GroceryItem[]): GroceryItem[] {
+  return grocery.map((item, index) => ({
+    ...item,
+    id: item.id ?? `g_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
+  }));
+}
+
 export async function saveCurrentWeek(week: Week, grocery: GroceryItem[]): Promise<StoredWeek> {
-  const stored: StoredWeek = { week: assignMealIds(week), grocery };
+  const stored: StoredWeek = { week: assignMealIds(week), grocery: assignGroceryIds(grocery) };
   await writeJson(CURRENT_WEEK_PATH, stored);
   return stored;
 }
@@ -54,7 +65,7 @@ export async function saveCurrentWeek(week: Week, grocery: GroceryItem[]): Promi
 // (if any) stays untouched.
 export async function updateGroceryList(grocery: GroceryItem[]): Promise<StoredWeek> {
   const current = await getCurrentWeek();
-  const stored: StoredWeek = { week: current.week, grocery };
+  const stored: StoredWeek = { week: current.week, grocery: assignGroceryIds(grocery) };
   await writeJson(CURRENT_WEEK_PATH, stored);
   return stored;
 }

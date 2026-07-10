@@ -44,7 +44,8 @@
     {
       "scope": "household",
       "kind": "hardRule",
-      "text": "Keep the leftover-into-lunch structure (saves cost and waste)"
+      "text": "Keep the leftover-into-lunch structure (saves cost and waste)",
+      "acceptCount": 1
     },
     {
       "scope": "household",

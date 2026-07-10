@@ -42,6 +42,7 @@ export interface MealLog {
 }
 
 export interface GroceryItem {
+  id?: string;          // assigned when persisted; lets two items share a name safely
   name: string;
   quantity: string;
   category: string;    // e.g. "Produce", "Dairy", "Meat & Fish"
