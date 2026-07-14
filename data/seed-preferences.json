@@ -19,7 +19,8 @@
     {
       "scope": "her",
       "kind": "hardRule",
-      "text": "Wholegrain toast + avocado + poached egg on weekday breakfasts"
+      "text": "Wholegrain toast + avocado + poached egg on weekday breakfasts",
+      "acceptCount": 1
     },
     {
       "scope": "household",

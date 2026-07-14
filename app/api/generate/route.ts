@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runOllamaAgent } from "@/lib/agent";
-import { buildGroceryList, estimateTotalDKK } from "@/lib/grocery";
+import { buildGroceryList } from "@/lib/grocery";
 import { sendWeekEmail } from "@/lib/email";
 import { getPreferencesData, saveCurrentWeek } from "@/lib/store";
 import type { Scope, Slot, Week } from "@/types";
@@ -71,7 +71,6 @@ export async function POST() {
       validateWeek(week);
 
       const grocery = buildGroceryList(week.meals, seedData.pantryCarryover);
-      week.estimatedCostDKK = estimateTotalDKK(grocery);
 
       const stored = await saveCurrentWeek(week, grocery);
 

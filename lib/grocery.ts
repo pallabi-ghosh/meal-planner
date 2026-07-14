@@ -1,24 +1,29 @@
 import type { Meal, GroceryItem, PantryItem } from "@/types";
 
 const categoryRules: Array<{ category: string; keywords: string[] }> = [
-  { category: "Produce", keywords: ["tomato", "onion", "garlic", "pepper", "spinach", "lettuce", "cucumber", "carrot", "potato", "mushroom", "apple", "banana", "lemon", "lime", "avocado", "cabbage", "broccoli", "zucchini", "eggplant", "parsley", "cilantro", "ginger"] },
+  { category: "Produce", keywords: ["tomato", "onion", "garlic", "pepper", "spinach", "lettuce", "cucumber", "carrot", "potato", "mushroom", "apple", "banana", "lemon", "lime", "avocado", "cabbage", "broccoli", "zucchini", "eggplant", "parsley", "cilantro", "ginger", "celery", "greens"] },
   { category: "Dairy", keywords: ["cheese", "yogurt", "butter", "milk", "cream", "egg"] },
-  { category: "Meat & Fish", keywords: ["chicken", "salmon", "fish", "beef", "turkey", "pork", "bacon", "sausage", "ham", "shrimp", "tuna"] },
-  { category: "Bakery", keywords: ["bread", "toast", "pita", "bun", "wrap", "tortilla", "bagel", "croissant"] },
-  { category: "Pantry", keywords: ["rice", "pasta", "lentil", "bean", "peas", "cereal", "oil", "flour", "sugar", "soy", "stock", "broth", "sauce", "coconut", "tahini", "hummus", "nut", "spice", "curry"] },
-  { category: "Frozen", keywords: ["frozen"] },
+  { category: "Meat & Fish", keywords: ["chicken", "salmon", "fish", "beef", "turkey", "pork", "bacon", "sausage", "ham", "shrimp", "tuna", "burger", "meat"] },
+  { category: "Bakery", keywords: ["bread", "toast", "pita", "bun", "wrap", "tortilla", "bagel", "croissant", "roti", "naan"] },
+  { category: "Pantry", keywords: ["rice", "pasta", "lentil", "bean", "peas", "cereal", "oil", "flour", "sugar", "soy", "stock", "broth", "sauce", "coconut", "tahini", "hummus", "nut", "spice", "curry", "noodle", "oats", "mayo"] },
+  { category: "Frozen", keywords: ["frozen", "frys", "fries"] },
   { category: "Beverages", keywords: ["coffee", "tea", "juice", "water"] },
+  { category: "Household", keywords: ["soap", "shampoo", "toothpaste", "toilet paper", "tissue", "detergent", "cleaner", "cleaning", "sponge", "foil", "cling film", "bin bag", "trash bag", "paper towel", "deodorant", "toiletries", "napkin", "dish soap", "washing"] },
 ];
 
-const basePrices: Record<string, number> = {
-  Produce: 12,
-  Dairy: 10,
-  "Meat & Fish": 24,
-  Bakery: 8,
-  Pantry: 6,
-  Frozen: 9,
-  Beverages: 5,
-};
+// Canonical display order for grouping the grocery list by category, in both the
+// app and the email — food first (roughly shop-aisle order), household last.
+export const CATEGORY_ORDER = [
+  "Produce",
+  "Dairy",
+  "Meat & Fish",
+  "Bakery",
+  "Pantry",
+  "Frozen",
+  "Beverages",
+  "Household",
+  "Uncategorised",
+];
 
 function normalizeText(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -53,7 +58,7 @@ function mergeQuantities(existing: string, incoming: string): string {
   return `${existing} + ${incoming}`;
 }
 
-function classifyCategory(name: string): string {
+export function classifyCategory(name: string): string {
   const normalized = normalizeText(name);
   for (const rule of categoryRules) {
     if (rule.keywords.some((keyword) => normalized.includes(keyword))) {
@@ -78,7 +83,6 @@ export function buildGroceryList(
 
       if (existing) {
         existing.quantity = mergeQuantities(existing.quantity, parsed.quantity);
-        existing.estPriceDKK = Math.max(existing.estPriceDKK, basePrices[existing.category] ?? 8);
         continue;
       }
 
@@ -88,17 +92,10 @@ export function buildGroceryList(
         name: parsed.name,
         quantity: parsed.quantity,
         category,
-        estPriceDKK: basePrices[category] ?? 8,
         fromPantry: Array.from(pantryNames).some((pantryName) => key.includes(pantryName) || pantryName.includes(key)),
       });
     }
   }
 
   return Array.from(seen.values()).sort((left, right) => left.name.localeCompare(right.name));
-}
-
-export function estimateTotalDKK(items: GroceryItem[]): number {
-  return items
-    .filter((item) => !item.fromPantry)
-    .reduce((sum, item) => sum + item.estPriceDKK, 0);
 }

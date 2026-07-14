@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { GroceryItem, MealLog, Preference, Scope, SeedData, Week } from "@/types";
+import type { GroceryItem, Meal, MealLog, Preference, Scope, SeedData, Week } from "@/types";
 
 // Personal, single-family app — plain JSON files are the storage layer.
 // See NOTES.md: "DB is low-stakes... start with whatever is easiest."
@@ -66,6 +66,19 @@ export async function saveCurrentWeek(week: Week, grocery: GroceryItem[]): Promi
 export async function updateGroceryList(grocery: GroceryItem[]): Promise<StoredWeek> {
   const current = await getCurrentWeek();
   const stored: StoredWeek = { week: current.week, grocery: assignGroceryIds(grocery) };
+  await writeJson(CURRENT_WEEK_PATH, stored);
+  return stored;
+}
+
+// Lets the meal list be hand-edited (Screen 1: add/remove a dish) independently of
+// grocery edits. If no week exists yet, starts a fresh one so manual planning works
+// even before the first AI generation.
+export async function updateMeals(meals: Meal[]): Promise<StoredWeek> {
+  const current = await getCurrentWeek();
+  const week: Week = current.week
+    ? { ...current.week, meals }
+    : { startDate: new Date().toISOString().slice(0, 10), meals, budgetTargetDKK: 0 };
+  const stored: StoredWeek = { week, grocery: current.grocery };
   await writeJson(CURRENT_WEEK_PATH, stored);
   return stored;
 }

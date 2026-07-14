@@ -1,26 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { AteStatus, Scope } from "@/types";
-
-interface MealForLog {
-  id?: string;
-  date: string;
-  slot: string;
-  forWhom: string;
-  dish: string;
-}
-
-interface MealLogEntry {
-  mealId: string;
-  eater: string;
-  ate: AteStatus;
-  actualDish?: string;
-}
+import type { AteStatus, Meal, MealLog, Scope } from "@/types";
 
 interface LogPanelProps {
-  meals: MealForLog[];
-  mealLogs: MealLogEntry[];
+  meals: Meal[];
+  mealLogs: MealLog[];
   onLogged: () => void;
 }
 
@@ -35,10 +20,11 @@ function SubstitutionForm({ onSubmit }: { onSubmit: (actualDish: string) => void
       </div>
       <div style={{ display: "flex", gap: 6 }}>
         <input
+          className="text-input"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="e.g. chai + biscuit"
-          style={{ flex: 1, fontFamily: "inherit", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1.5px solid var(--line)" }}
+          style={{ flex: 1 }}
         />
         <button
           className="btn"
@@ -53,7 +39,7 @@ function SubstitutionForm({ onSubmit }: { onSubmit: (actualDish: string) => void
   );
 }
 
-function MealLogRow({ meal, log, onLogged }: { meal: MealForLog; log?: MealLogEntry; onLogged: () => void }) {
+function MealLogRow({ meal, log, onLogged }: { meal: Meal; log?: MealLog; onLogged: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -142,9 +128,9 @@ export default function LogPanel({ meals, mealLogs, onLogged }: LogPanelProps) {
       <div className="box">
         <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
           <select
+            className="text-input"
             value={suggestionScope}
             onChange={(e) => setSuggestionScope(e.target.value as Scope)}
-            style={{ fontFamily: "inherit", fontSize: 11, borderRadius: 6, border: "1.5px solid var(--line)" }}
           >
             {SCOPES.map((s) => (
               <option key={s} value={s}>
@@ -153,10 +139,11 @@ export default function LogPanel({ meals, mealLogs, onLogged }: LogPanelProps) {
             ))}
           </select>
           <input
+            className="text-input"
             value={suggestionText}
             onChange={(e) => setSuggestionText(e.target.value)}
             placeholder="For breakfast I usually like…"
-            style={{ flex: 1, fontFamily: "inherit", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1.5px solid var(--line)" }}
+            style={{ flex: 1 }}
           />
         </div>
         <button className="btn" disabled={savingSuggestion || !suggestionText.trim()} onClick={saveSuggestion}>

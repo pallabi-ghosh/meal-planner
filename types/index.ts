@@ -46,7 +46,6 @@ export interface GroceryItem {
   name: string;
   quantity: string;
   category: string;    // e.g. "Produce", "Dairy", "Meat & Fish"
-  estPriceDKK: number;
   fromPantry: boolean; // true => already have it, struck through, not bought
 }
 
@@ -54,7 +53,6 @@ export interface GroceryItem {
 export interface Week {
   startDate: string;
   meals: Meal[];
-  estimatedCostDKK?: number;
   budgetTargetDKK: number;
 }
 
@@ -69,4 +67,13 @@ export interface SeedData {
   };
   preferences: Preference[];
   pantryCarryover: PantryItem[];
+}
+
+// The shape returned by POST /api/generate — shared by GenerateButton and page.tsx
+// instead of each re-declaring it.
+export interface GenerationResponse {
+  ok: boolean;
+  week?: Week;
+  grocery?: GroceryItem[];
+  message?: string;
 }

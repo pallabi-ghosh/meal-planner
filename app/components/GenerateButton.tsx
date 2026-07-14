@@ -1,30 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-interface GenerationResponse {
-  ok: boolean;
-  week?: {
-    startDate: string;
-    meals: Array<{
-      date: string;
-      slot: string;
-      forWhom: string;
-      dish: string;
-      ingredients: string[];
-    }>;
-    budgetTargetDKK?: number;
-    estimatedCostDKK?: number;
-  };
-  grocery?: Array<{
-    name: string;
-    quantity: string;
-    category: string;
-    estPriceDKK: number;
-    fromPantry: boolean;
-  }>;
-  message?: string;
-}
+import type { GenerationResponse } from "@/types";
 
 interface GenerateButtonProps {
   onGenerated: (result: GenerationResponse) => void;

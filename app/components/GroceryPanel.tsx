@@ -1,18 +1,11 @@
 "use client";
 
 import { useState } from "react";
-
-interface GroceryItemData {
-  id?: string;
-  name: string;
-  quantity: string;
-  category: string;
-  estPriceDKK: number;
-  fromPantry: boolean;
-}
+import type { GroceryItem } from "@/types";
+import { CATEGORY_ORDER, classifyCategory } from "@/lib/grocery";
 
 interface GroceryPanelProps {
-  grocery: GroceryItemData[];
+  grocery: GroceryItem[];
   onChanged: () => void;
 }
 
@@ -43,7 +36,7 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
   const [duplicate, setDuplicate] = useState<DuplicateMatch | null>(null);
   const [duplicateEditValue, setDuplicateEditValue] = useState("");
 
-  async function saveList(next: GroceryItemData[]) {
+  async function saveList(next: GroceryItem[]) {
     setBusy(true);
     try {
       await fetch("/api/grocery", {
@@ -76,8 +69,7 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
         id: crypto.randomUUID(),
         name: text,
         quantity: "",
-        category: "Uncategorised",
-        estPriceDKK: 8,
+        category: classifyCategory(text),
         fromPantry: false,
       },
     ];
@@ -137,7 +129,12 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
     }
   }
 
-  const total = grocery.filter((item) => !item.fromPantry).reduce((sum, item) => sum + item.estPriceDKK, 0);
+  const grouped = CATEGORY_ORDER.map((category) => ({
+    category,
+    entries: grocery
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => (item.category || "Uncategorised") === category),
+  })).filter((group) => group.entries.length > 0);
 
   return (
     <>
@@ -145,42 +142,43 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
       {grocery.length === 0 ? (
         <div className="box">No items yet — add what you need below, or generate a week to prefill it.</div>
       ) : (
-        <>
-          {grocery.map((item, index) => (
-            <div
-              className="row"
-              key={item.id ?? `${item.name}-${index}`}
-              style={item.fromPantry ? { opacity: 0.45, textDecoration: "line-through" } : undefined}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={item.fromPantry}
-                  onChange={() => toggleHaveIt(index)}
-                  disabled={busy}
-                  title="Already have it at home"
-                />
-                {item.name}
-                {item.quantity ? ` — ${item.quantity}` : ""}
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="small">{item.fromPantry ? "have it" : `${item.estPriceDKK} DKK`}</span>
-                <button
-                  className="btn ghost"
-                  disabled={busy}
-                  onClick={() => removeItem(index)}
-                  style={{ padding: "2px 8px", fontSize: 10 }}
-                >
-                  ×
-                </button>
-              </span>
+        grouped.map(({ category, entries }) => (
+          <div key={category} style={{ marginBottom: 12 }}>
+            <div className="small" style={{ textTransform: "uppercase", letterSpacing: "0.06em", margin: "8px 0 4px" }}>
+              {category}
             </div>
-          ))}
-          <div className="tot">
-            <span>TOTAL</span>
-            <span>{total} DKK</span>
+            {entries.map(({ item, index }) => (
+              <div
+                className="row"
+                key={item.id ?? `${item.name}-${index}`}
+                style={item.fromPantry ? { opacity: 0.45, textDecoration: "line-through" } : undefined}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={item.fromPantry}
+                    onChange={() => toggleHaveIt(index)}
+                    disabled={busy}
+                    title="Already have it at home"
+                  />
+                  {item.name}
+                  {item.quantity ? ` — ${item.quantity}` : ""}
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {item.fromPantry ? <span className="small">have it</span> : null}
+                  <button
+                    className="btn ghost"
+                    disabled={busy}
+                    onClick={() => removeItem(index)}
+                    style={{ padding: "2px 8px", fontSize: 10 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+            ))}
           </div>
-        </>
+        ))
       )}
 
       {duplicate ? (
@@ -192,12 +190,13 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
             Edit this to the real combined amount, then update the existing line — or add your new entry as a separate line instead.
           </div>
           <input
+            className="text-input"
             value={duplicateEditValue}
             onChange={(e) => setDuplicateEditValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") resolveDuplicateUpdate();
             }}
-            style={{ width: "100%", fontFamily: "inherit", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1.5px solid var(--line)", marginBottom: 8 }}
+            style={{ width: "100%", marginBottom: 8 }}
           />
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button className="btn" disabled={busy || !duplicateEditValue.trim()} onClick={resolveDuplicateUpdate}>
@@ -214,13 +213,14 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
       ) : (
         <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
           <input
+            className="text-input"
             value={entry}
             onChange={(e) => setEntry(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") addItem();
             }}
             placeholder="e.g. box of eggs, 6 avocados, 2 packets of milk"
-            style={{ flex: 1, fontFamily: "inherit", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1.5px solid var(--line)" }}
+            style={{ flex: 1 }}
           />
           <button className="btn" disabled={busy || !entry.trim()} onClick={addItem}>
             Add
