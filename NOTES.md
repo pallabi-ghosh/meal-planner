@@ -105,3 +105,10 @@ add your own notes. Add freely below any section.
   Tab bar sits at the bottom on phones. Log is per profile (no Family option); Week has a read-only
   per-person view. Planning and groceries stay family-level.
 - Ollama is back on `127.0.0.1` (the Tailscale-bound setup was only for the dropped Fly.io plan).
+- **MP2-3b done:** new calm design system (tokens in `globals.css`, Figtree, 44px touch targets) and a
+  responsive shell: tabs in the header on wide screens, bottom bar on phones.
+- **MP2-4 done:** `/profiles` list and per-profile forms. Adults: sex, age, height, weight (optional), activity.
+  Child: age in months, no added sugar/salt, texture, allergens. Each profile saves on its own.
+- **MP2-5 done:** usual meals per person in `data/taste/<id>.md` (hand-editable; other sections preserved).
+  Child dinner is a pool. Ingredient suggestion via Ollama, filtered by the child's rules.
+- Found while testing: saving one profile used to fail because all three were validated together. Fixed.

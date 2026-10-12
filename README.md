@@ -19,8 +19,9 @@ It runs on your own computer, uses a **local LLM (Ollama)** for planning, stores
 
 **Foundation for v2 (in the codebase, UI in progress)**
 
-- Household profiles (adults with body details for calorie targets, a child with food rules), validated through `/api/household`.
-- Structured recipes (ingredient, quantity, unit), pantry and bought ledger, and taste-file proposal types.
+- **Profiles and food rules** (`/profiles`): adults with body details for calorie targets, a child with food rules (no added sugar or salt, texture, allergens). Each profile saves on its own.
+- **Usual meals** per person, kept in a Markdown taste file (`data/taste/<profile>.md`) you can also edit by hand. The child's dinner is a short pool to pick from. An optional Ollama call suggests ingredients, filtered by the child's food rules.
+- Structured recipes (ingredient, quantity, unit), pantry and bought ledger, and taste-file proposal types (data model only so far).
 - Atomic JSON writes with a per-file queue, so two devices can edit at once without corrupting data.
 
 ## Screens
@@ -120,16 +121,18 @@ A system-design diagram of the full loop is in [`docs/architecture.md`](docs/arc
 ```
 app/
   week/ log/ grocery/     one route per tab
+  profiles/               profile list and per-profile setup (not a tab)
   api/                    route handlers (see API below)
-  components/             MealPlanPanel, LogPanel, GroceryPanel, tab shell, shared app state
+  components/             MealPlanPanel, LogPanel, GroceryPanel, UsualMealsEditor, tab shell, shared app state
 lib/
   agent.ts                Ollama tool-calling agent
   grocery.ts              ingredient parsing, merging, categories
   household.ts            profile validation helpers
+  taste.ts                parse/serialise the Markdown taste files
   email.ts                Resend email + HTML template
   store.ts                JSON storage with atomic writes and a write queue
 types/index.ts            shared domain types
-data/                     seed-preferences.json (tracked); runtime state files (gitignored)
+data/                     seed-preferences.json (tracked); runtime state and taste/ (gitignored)
 docs/                     design notes, wireframes, architecture diagram
 ```
 
@@ -146,11 +149,13 @@ All routes return JSON.
 | `/api/send-list` | POST | Email the current grocery list |
 | `/api/log` | POST | Log a meal (`{ mealId, eater, ate, actualDish? }`) or add a preference (`{ eater, newPreferenceText }`) |
 | `/api/preferences` | GET | Household preferences and pantry carry-over |
-| `/api/household` | GET / POST | Profiles and calorie thresholds (validated) |
+| `/api/household` | GET / POST | Profiles and calorie thresholds (validated; a profile may be incomplete while being set up) |
+| `/api/taste/[id]` | GET / POST | A profile's usual meals (`him`, `her` or `toddler`), stored in `data/taste/<id>.md` |
+| `/api/suggest-ingredients` | POST | `{ dish }` → ingredient names from the local model, to confirm or edit |
 
 ## Data and privacy
 
-- Everything stays on your machine, in `data/`. Runtime files (`current-week.json`, `meal-logs.json`, `household.json`) are gitignored.
+- Everything stays on your machine, in `data/`. Runtime files (`current-week.json`, `meal-logs.json`, `household.json`, `data/taste/`) are gitignored, because they hold body measurements and food habits.
 - The app talks to your local Ollama, and to Resend only if you set `RESEND_API_KEY`.
 - Next.js itself collects anonymous telemetry by default; disable it with `NEXT_TELEMETRY_DISABLED=1`.
 
@@ -170,8 +175,9 @@ v2 builds on the current app:
 
 - [x] Three tabs (Week / Log / Grocery), mobile-first layout
 - [x] Household data model, validated storage, per-profile logging
-- [ ] Profile setup forms (adults with calorie inputs, child with food rules)
-- [ ] Per-person taste files (Markdown) with weekday/weekend rules and defaults for breakfast, lunch and snacks
+- [x] Profile setup forms (adults with calorie inputs, child with food rules)
+- [x] Per-person taste files (Markdown) with usual meals and weekday/weekend tags; calmer, responsive design
+- [ ] Week plan prefilled from those usual meals, with the child's dinner chosen from his pool
 - [ ] Week calendar, cuisine input, three alternatives for any meal, cheat day, "finalise week"
 - [ ] Grocery for any date range, subtracting pantry and already-bought items
 - [ ] Natural-language logging with calorie estimates, and taste-file change proposals you approve

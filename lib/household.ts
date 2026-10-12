@@ -13,6 +13,20 @@ export function isProfileComplete(profile: Profile): boolean {
   return Boolean(profile.sex && profile.ageYears && profile.heightCm && profile.activity);
 }
 
+// "Anna's", "Chris'" — used wherever a name is shown as owning something.
+export function possessive(name: string): string {
+  return /s$/i.test(name) ? `${name}'` : `${name}'s`;
+}
+
+// What an adult's form still needs before it can be saved as "done".
+export function missingAdultField(profile: Profile): string | null {
+  if (!profile.sex) return "Pick female or male — it's used for the calorie target.";
+  if (!profile.ageYears) return "Enter an age.";
+  if (!profile.heightCm) return "Enter a height.";
+  if (!profile.activity) return "Pick an activity level.";
+  return null;
+}
+
 export function isHouseholdSetUp(household: Household): boolean {
   return household.profiles.length > 0 && household.profiles.every(isProfileComplete);
 }
@@ -66,10 +80,12 @@ export function validateHousehold(input: unknown): Validation {
     if (!name || name.length > 40) return { ok: false, message: `Profile "${entry.id}" needs a name (max 40 characters).` };
 
     if (entry.kind === "adult") {
-      if (!entry.sex || !SEXES.includes(entry.sex)) return { ok: false, message: `${name}: pick a sex.` };
-      if (!inRange(entry.ageYears, 16, 110)) return { ok: false, message: `${name}: age must be between 16 and 110.` };
-      if (!inRange(entry.heightCm, 100, 230)) return { ok: false, message: `${name}: height must be between 100 and 230 cm.` };
-      if (!entry.activity || !ACTIVITY_LEVELS.includes(entry.activity)) {
+      // Fields may still be empty while the household is being set up one profile at
+      // a time; whatever is present must be valid. Completeness is isProfileComplete.
+      if (entry.sex !== undefined && !SEXES.includes(entry.sex)) return { ok: false, message: `${name}: pick female or male.` };
+      if (entry.ageYears !== undefined && !inRange(entry.ageYears, 16, 110)) return { ok: false, message: `${name}: age must be between 16 and 110.` };
+      if (entry.heightCm !== undefined && !inRange(entry.heightCm, 100, 230)) return { ok: false, message: `${name}: height must be between 100 and 230 cm.` };
+      if (entry.activity !== undefined && !ACTIVITY_LEVELS.includes(entry.activity)) {
         return { ok: false, message: `${name}: pick an activity level.` };
       }
       if (entry.weightKg !== undefined && !inRange(entry.weightKg, 30, 300)) {
@@ -88,10 +104,10 @@ export function validateHousehold(input: unknown): Validation {
     } else if (entry.kind === "child") {
       const rules = validateChildRules(entry.childRules);
       if (typeof rules === "string") return { ok: false, message: `${name}: ${rules}` };
-      if (entry.ageYears !== undefined && !inRange(entry.ageYears, 0, 15)) {
-        return { ok: false, message: `${name}: age must be between 0 and 15.` };
+      if (entry.ageMonths !== undefined && !inRange(entry.ageMonths, 0, 180)) {
+        return { ok: false, message: `${name}: age must be between 0 and 180 months.` };
       }
-      profiles.push({ id: entry.id, kind: "child", name, ageYears: entry.ageYears, childRules: rules });
+      profiles.push({ id: entry.id, kind: "child", name, ageMonths: entry.ageMonths, childRules: rules });
     } else {
       return { ok: false, message: `Profile "${entry.id}" needs kind "adult" or "child".` };
     }

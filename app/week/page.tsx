@@ -6,10 +6,11 @@ import { useAppData } from "@/app/components/AppData";
 import GenerateButton from "@/app/components/GenerateButton";
 import MealPlanPanel from "@/app/components/MealPlanPanel";
 import ProfileSwitch from "@/app/components/ProfileSwitch";
+import { possessive } from "@/lib/household";
 import type { GenerationResponse } from "@/types";
 
 export default function WeekPage() {
-  const { week, preferences, household, view, refresh } = useAppData();
+  const { week, preferences, household, view, refresh, loaded, setupComplete } = useAppData();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function handleGenerated(data: GenerationResponse) {
@@ -30,9 +31,16 @@ export default function WeekPage() {
     <div className="screen">
       <div className="scr-head">
         <span>WEEK</span>
-        <span className="scr-tag">{viewedProfile ? `${viewedProfile.name}'s view` : "family plan"}</span>
+        <span className="scr-tag">{viewedProfile ? `${possessive(viewedProfile.name)} view` : "family plan"}</span>
       </div>
       <div className="scr-body">
+        {loaded && !setupComplete ? (
+          <div className="budget">
+            Finish setting up your profiles so calorie targets and food rules apply.{" "}
+            <Link href="/profiles">Set up profiles</Link>
+          </div>
+        ) : null}
+
         <ProfileSwitch allowFamily />
 
         {preferences && preferences.pantryCarryover.length > 0 ? (
@@ -50,7 +58,7 @@ export default function WeekPage() {
         {viewedProfile ? (
           // Planning is family-level; a person's view is read-only.
           <>
-            <div className="label">{viewedProfile.name}&rsquo;s meals this week</div>
+            <div className="label">{possessive(viewedProfile.name)} meals this week</div>
             {profileMeals.length === 0 ? (
               <div className="box">Nothing planned for {viewedProfile.name} yet.</div>
             ) : (

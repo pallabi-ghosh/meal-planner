@@ -1,6 +1,7 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { GroceryItem, Household, Meal, MealLog, Preference, Scope, SeedData, Week } from "@/types";
+import type { GroceryItem, Household, Meal, MealLog, Preference, ProfileId, Scope, SeedData, Week } from "@/types";
+import { parseTasteFile, serialiseTasteFile, type TasteFile, type UsualMeals } from "@/lib/taste";
 
 // Personal, single-family app — plain JSON files are the storage layer.
 // See NOTES.md: "DB is low-stakes... start with whatever is easiest."
@@ -10,6 +11,7 @@ const CURRENT_WEEK_PATH = path.join(DATA_DIR, "current-week.json");
 const MEAL_LOGS_PATH = path.join(DATA_DIR, "meal-logs.json");
 const PREFERENCES_PATH = path.join(DATA_DIR, "seed-preferences.json");
 const HOUSEHOLD_PATH = path.join(DATA_DIR, "household.json");
+const TASTE_DIR = path.join(DATA_DIR, "taste");
 
 async function readJson<T>(filePath: string, fallback: T): Promise<T> {
   try {
@@ -217,5 +219,34 @@ export function saveHousehold(household: Household): Promise<Household> {
   return serialised(HOUSEHOLD_PATH, async () => {
     await writeJson(HOUSEHOLD_PATH, household);
     return household;
+  });
+}
+
+// ---- v2: taste files (one Markdown file per profile) --------------------------
+
+function tastePath(profileId: ProfileId): string {
+  return path.join(TASTE_DIR, `${profileId}.md`);
+}
+
+export async function getTasteFile(profileId: ProfileId, defaultTitle: string): Promise<TasteFile> {
+  try {
+    return parseTasteFile(await readFile(tastePath(profileId), "utf-8"));
+  } catch {
+    return parseTasteFile(`# ${defaultTitle}\n`);
+  }
+}
+
+// Replaces only the structured "Usual meals" section; anything else the person
+// wrote in the file is preserved.
+export function saveUsualMeals(profileId: ProfileId, defaultTitle: string, usualMeals: UsualMeals): Promise<TasteFile> {
+  const filePath = tastePath(profileId);
+  return serialised(filePath, async () => {
+    const current = await getTasteFile(profileId, defaultTitle);
+    const next: TasteFile = { ...current, usualMeals };
+    await mkdir(TASTE_DIR, { recursive: true });
+    const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(tmpPath, serialiseTasteFile(next), "utf-8");
+    await rename(tmpPath, filePath);
+    return next;
   });
 }

@@ -45,6 +45,7 @@ export interface Profile {
   weightKg?: number;     // optional
   activity?: ActivityLevel;
   // Child only.
+  ageMonths?: number;
   childRules?: ChildRules;
 }
 

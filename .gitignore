@@ -7,3 +7,4 @@ tsconfig.tsbuildinfo
 data/current-week.json
 data/meal-logs.json
 data/household.json
+data/taste/

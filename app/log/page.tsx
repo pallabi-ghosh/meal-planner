@@ -3,6 +3,7 @@
 import { useAppData } from "@/app/components/AppData";
 import LogPanel from "@/app/components/LogPanel";
 import ProfileSwitch from "@/app/components/ProfileSwitch";
+import { possessive } from "@/lib/household";
 import type { SeedData } from "@/types";
 
 function prefLabel(pref: SeedData["preferences"][number]): string {
@@ -27,7 +28,7 @@ export default function LogPage() {
     <div className="screen">
       <div className="scr-head">
         <span>LOG</span>
-        <span className="scr-tag">{active ? `${active.name}'s log` : "per profile"}</span>
+        <span className="scr-tag">{active ? `${possessive(active.name)} log` : "per profile"}</span>
       </div>
       <div className="scr-body">
         <ProfileSwitch allowFamily={false} />

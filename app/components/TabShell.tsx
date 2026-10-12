@@ -11,7 +11,7 @@ const TABS = [
 ];
 
 // Three separate tabs; no tab shows another tab's content. On a phone the tab bar
-// sits at the bottom, within thumb reach.
+// sits at the bottom, within thumb reach; on wide screens it moves into the header.
 export default function TabShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { loadError, refresh } = useAppData();
@@ -20,6 +20,24 @@ export default function TabShell({ children }: { children: React.ReactNode }) {
     <div className="app">
       <header className="app-head">
         <h1>Meal Planner</h1>
+        <nav className="tabbar" aria-label="Sections">
+          {TABS.map((tab) => {
+            const active = pathname.startsWith(tab.href);
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`tab${active ? " active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <Link href="/profiles" className="head-link">
+          Profiles and food rules
+        </Link>
       </header>
 
       {loadError ? (
@@ -31,20 +49,7 @@ export default function TabShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <main className="app-body">{children}</main>
-
-      <nav className="tabbar" aria-label="Sections">
-        {TABS.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`tab${pathname.startsWith(tab.href) ? " active" : ""}`}
-            aria-current={pathname.startsWith(tab.href) ? "page" : undefined}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </nav>
+      <main>{children}</main>
     </div>
   );
 }
