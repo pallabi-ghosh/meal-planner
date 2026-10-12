@@ -96,3 +96,12 @@ add your own notes. Add freely below any section.
 
 ---
 <!-- Add your own notes below this line anytime. -->
+
+## v2 — Sprint 1 progress
+- **MP2-2 done:** v2 data model added on top of v1 (profiles, structured recipes, pantry/bought ledger,
+  proposals — all optional, so v1 data still loads). Storage stays JSON files, now with atomic writes and a
+  per-file write queue so two phones can't corrupt a file. New `/api/household` with validation.
+- **MP2-3 done:** the single page became three tabs (Week / Log / Grocery) as routes, reusing the v1 panels.
+  Tab bar sits at the bottom on phones. Log is per profile (no Family option); Week has a read-only
+  per-person view. Planning and groceries stay family-level.
+- Ollama is back on `127.0.0.1` (the Tailscale-bound setup was only for the dropped Fly.io plan).

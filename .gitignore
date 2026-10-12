@@ -6,3 +6,4 @@ tsconfig.tsbuildinfo
 *.log
 data/current-week.json
 data/meal-logs.json
+data/household.json

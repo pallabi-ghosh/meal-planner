@@ -1,6 +1,6 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { GroceryItem, Meal, MealLog, Preference, Scope, SeedData, Week } from "@/types";
+import type { GroceryItem, Household, Meal, MealLog, Preference, Scope, SeedData, Week } from "@/types";
 
 // Personal, single-family app — plain JSON files are the storage layer.
 // See NOTES.md: "DB is low-stakes... start with whatever is easiest."
@@ -9,6 +9,7 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const CURRENT_WEEK_PATH = path.join(DATA_DIR, "current-week.json");
 const MEAL_LOGS_PATH = path.join(DATA_DIR, "meal-logs.json");
 const PREFERENCES_PATH = path.join(DATA_DIR, "seed-preferences.json");
+const HOUSEHOLD_PATH = path.join(DATA_DIR, "household.json");
 
 async function readJson<T>(filePath: string, fallback: T): Promise<T> {
   try {
@@ -19,8 +20,26 @@ async function readJson<T>(filePath: string, fallback: T): Promise<T> {
   }
 }
 
+// Atomic: write a temp file, then rename over the target, so a reader (or a crash)
+// never sees a half-written file.
 async function writeJson(filePath: string, data: unknown): Promise<void> {
-  await writeFile(filePath, JSON.stringify(data, null, 2) + "\n", "utf-8");
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tmpPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
+  await rename(tmpPath, filePath);
+}
+
+// Two phones can write the same file at once (e.g. ticking grocery items). Every
+// read-modify-write on a file runs through this per-file queue so they apply one
+// after another. Held on globalThis because Next may bundle each route separately.
+type WriteQueues = Map<string, Promise<unknown>>;
+const globalWithQueues = globalThis as typeof globalThis & { __mealPlannerWriteQueues?: WriteQueues };
+const writeQueues: WriteQueues = (globalWithQueues.__mealPlannerWriteQueues ??= new Map());
+
+function serialised<T>(filePath: string, task: () => Promise<T>): Promise<T> {
+  const previous = writeQueues.get(filePath) ?? Promise.resolve();
+  const run = previous.then(task);
+  writeQueues.set(filePath, run.catch(() => undefined));
+  return run;
 }
 
 export interface StoredWeek {
@@ -55,48 +74,56 @@ function assignGroceryIds(grocery: GroceryItem[]): GroceryItem[] {
   }));
 }
 
-export async function saveCurrentWeek(week: Week, grocery: GroceryItem[]): Promise<StoredWeek> {
-  const stored: StoredWeek = { week: assignMealIds(week), grocery: assignGroceryIds(grocery) };
-  await writeJson(CURRENT_WEEK_PATH, stored);
-  return stored;
+export function saveCurrentWeek(week: Week, grocery: GroceryItem[]): Promise<StoredWeek> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const stored: StoredWeek = { week: assignMealIds(week), grocery: assignGroceryIds(grocery) };
+    await writeJson(CURRENT_WEEK_PATH, stored);
+    return stored;
+  });
 }
 
 // Lets the grocery list be hand-edited independently of AI generation — the week
 // (if any) stays untouched.
-export async function updateGroceryList(grocery: GroceryItem[]): Promise<StoredWeek> {
-  const current = await getCurrentWeek();
-  const stored: StoredWeek = { week: current.week, grocery: assignGroceryIds(grocery) };
-  await writeJson(CURRENT_WEEK_PATH, stored);
-  return stored;
+export function updateGroceryList(grocery: GroceryItem[]): Promise<StoredWeek> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const current = await getCurrentWeek();
+    const stored: StoredWeek = { week: current.week, grocery: assignGroceryIds(grocery) };
+    await writeJson(CURRENT_WEEK_PATH, stored);
+    return stored;
+  });
 }
 
 // Lets the meal list be hand-edited (Screen 1: add/remove a dish) independently of
 // grocery edits. If no week exists yet, starts a fresh one so manual planning works
 // even before the first AI generation.
-export async function updateMeals(meals: Meal[]): Promise<StoredWeek> {
-  const current = await getCurrentWeek();
-  const week: Week = current.week
-    ? { ...current.week, meals }
-    : { startDate: new Date().toISOString().slice(0, 10), meals, budgetTargetDKK: 0 };
-  const stored: StoredWeek = { week, grocery: current.grocery };
-  await writeJson(CURRENT_WEEK_PATH, stored);
-  return stored;
+export function updateMeals(meals: Meal[]): Promise<StoredWeek> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const current = await getCurrentWeek();
+    const week: Week = current.week
+      ? { ...current.week, meals }
+      : { startDate: new Date().toISOString().slice(0, 10), meals, budgetTargetDKK: 0 };
+    const stored: StoredWeek = { week, grocery: current.grocery };
+    await writeJson(CURRENT_WEEK_PATH, stored);
+    return stored;
+  });
 }
 
 export async function getMealLogs(): Promise<MealLog[]> {
   return readJson<MealLog[]>(MEAL_LOGS_PATH, []);
 }
 
-export async function appendMealLog(entry: Omit<MealLog, "id" | "loggedAt">): Promise<MealLog> {
-  const logs = await getMealLogs();
-  const log: MealLog = {
-    ...entry,
-    id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    loggedAt: new Date().toISOString(),
-  };
-  logs.push(log);
-  await writeJson(MEAL_LOGS_PATH, logs);
-  return log;
+export function appendMealLog(entry: Omit<MealLog, "id" | "loggedAt">): Promise<MealLog> {
+  return serialised(MEAL_LOGS_PATH, async () => {
+    const logs = await getMealLogs();
+    const log: MealLog = {
+      ...entry,
+      id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      loggedAt: new Date().toISOString(),
+    };
+    logs.push(log);
+    await writeJson(MEAL_LOGS_PATH, logs);
+    return log;
+  });
 }
 
 export async function getPreferencesData(): Promise<SeedData> {
@@ -106,10 +133,6 @@ export async function getPreferencesData(): Promise<SeedData> {
     preferences: [],
     pantryCarryover: [],
   });
-}
-
-async function savePreferencesData(data: SeedData): Promise<void> {
-  await writeJson(PREFERENCES_PATH, data);
 }
 
 const STOPWORDS = new Set(["with", "and", "the", "for", "have", "your", "this", "that", "from"]);
@@ -128,38 +151,71 @@ function significantWords(text: string): string[] {
  * style as the category matching in lib/grocery.ts. Returns null if nothing matches
  * closely enough — the MealLog itself is still saved regardless.
  */
-export async function bumpPreferenceCount(
+export function bumpPreferenceCount(
   scope: Scope,
   dishText: string,
   direction: "accept" | "reject"
 ): Promise<Preference | null> {
-  const data = await getPreferencesData();
-  const dishWords = new Set(significantWords(dishText));
-  if (dishWords.size === 0) return null;
+  return serialised(PREFERENCES_PATH, async () => {
+    const data = await getPreferencesData();
+    const dishWords = new Set(significantWords(dishText));
+    if (dishWords.size === 0) return null;
 
-  const candidate = data.preferences.find((pref) => {
-    if (pref.kind !== "hardRule" && pref.kind !== "learned") return false;
-    if (pref.scope !== scope && pref.scope !== "household") return false;
-    const prefWords = significantWords(pref.text);
-    return prefWords.some((word) => dishWords.has(word));
+    const candidate = data.preferences.find((pref) => {
+      if (pref.kind !== "hardRule" && pref.kind !== "learned") return false;
+      if (pref.scope !== scope && pref.scope !== "household") return false;
+      const prefWords = significantWords(pref.text);
+      return prefWords.some((word) => dishWords.has(word));
+    });
+
+    if (!candidate) return null;
+
+    if (direction === "accept") {
+      candidate.acceptCount = (candidate.acceptCount ?? 0) + 1;
+    } else {
+      candidate.rejectCount = (candidate.rejectCount ?? 0) + 1;
+    }
+
+    await writeJson(PREFERENCES_PATH, data);
+    return candidate;
   });
-
-  if (!candidate) return null;
-
-  if (direction === "accept") {
-    candidate.acceptCount = (candidate.acceptCount ?? 0) + 1;
-  } else {
-    candidate.rejectCount = (candidate.rejectCount ?? 0) + 1;
-  }
-
-  await savePreferencesData(data);
-  return candidate;
 }
 
-export async function addLearnedPreference(scope: Scope, text: string): Promise<Preference> {
-  const data = await getPreferencesData();
-  const preference: Preference = { scope, kind: "learned", text, acceptCount: 1, rejectCount: 0 };
-  data.preferences.push(preference);
-  await savePreferencesData(data);
-  return preference;
+export function addLearnedPreference(scope: Scope, text: string): Promise<Preference> {
+  return serialised(PREFERENCES_PATH, async () => {
+    const data = await getPreferencesData();
+    const preference: Preference = { scope, kind: "learned", text, acceptCount: 1, rejectCount: 0 };
+    data.preferences.push(preference);
+    await writeJson(PREFERENCES_PATH, data);
+    return preference;
+  });
+}
+
+// ---- v2: household & profiles ----------------------------------------------
+
+// Skeleton shown before first-time setup: the three v1 identities, adults still
+// missing their body details. Not "complete" until the setup form is saved.
+const DEFAULT_HOUSEHOLD: Household = {
+  profiles: [
+    { id: "her", kind: "adult", name: "Her" },
+    { id: "him", kind: "adult", name: "Him" },
+    {
+      id: "toddler",
+      kind: "child",
+      name: "Child",
+      childRules: { noAddedSugar: true, noAddedSalt: true, allergens: [] },
+    },
+  ],
+  calorieThresholds: { amberPct: 10, redPct: 25 },
+};
+
+export async function getHousehold(): Promise<Household> {
+  return readJson<Household>(HOUSEHOLD_PATH, DEFAULT_HOUSEHOLD);
+}
+
+export function saveHousehold(household: Household): Promise<Household> {
+  return serialised(HOUSEHOLD_PATH, async () => {
+    await writeJson(HOUSEHOLD_PATH, household);
+    return household;
+  });
 }

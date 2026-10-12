@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { AteStatus, Meal, MealLog, Scope } from "@/types";
+import type { AteStatus, Meal, MealLog, ProfileId, Scope } from "@/types";
 
 interface LogPanelProps {
   meals: Meal[];
   mealLogs: MealLog[];
+  profile: ProfileId;   // logs are per profile, never at family level
   onLogged: () => void;
 }
 
@@ -39,7 +40,17 @@ function SubstitutionForm({ onSubmit }: { onSubmit: (actualDish: string) => void
   );
 }
 
-function MealLogRow({ meal, log, onLogged }: { meal: Meal; log?: MealLog; onLogged: () => void }) {
+function MealLogRow({
+  meal,
+  log,
+  profile,
+  onLogged,
+}: {
+  meal: Meal;
+  log?: MealLog;
+  profile: ProfileId;
+  onLogged: () => void;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -50,7 +61,7 @@ function MealLogRow({ meal, log, onLogged }: { meal: Meal; log?: MealLog; onLogg
       await fetch("/api/log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mealId: meal.id, eater: meal.forWhom, ate, actualDish }),
+        body: JSON.stringify({ mealId: meal.id, eater: profile, ate, actualDish }),
       });
       setShowForm(false);
       onLogged();
@@ -86,7 +97,7 @@ function MealLogRow({ meal, log, onLogged }: { meal: Meal; log?: MealLog; onLogg
   );
 }
 
-export default function LogPanel({ meals, mealLogs, onLogged }: LogPanelProps) {
+export default function LogPanel({ meals, mealLogs, profile, onLogged }: LogPanelProps) {
   const [suggestionScope, setSuggestionScope] = useState<Scope>("household");
   const [suggestionText, setSuggestionText] = useState("");
   const [savingSuggestion, setSavingSuggestion] = useState(false);
@@ -107,7 +118,13 @@ export default function LogPanel({ meals, mealLogs, onLogged }: LogPanelProps) {
     }
   }
 
-  const logByMealId = new Map(mealLogs.map((l) => [l.mealId, l]));
+  // A log belongs to one profile. Logs written by v1 used eater "household" for
+  // shared meals, so those still count as logged for everyone.
+  function logFor(meal: Meal): MealLog | undefined {
+    if (!meal.id) return undefined;
+    const forMeal = mealLogs.filter((l) => l.mealId === meal.id);
+    return forMeal.find((l) => l.eater === profile) ?? forMeal.find((l) => l.eater === "household");
+  }
 
   return (
     <>
@@ -118,7 +135,8 @@ export default function LogPanel({ meals, mealLogs, onLogged }: LogPanelProps) {
           <MealLogRow
             key={meal.id ?? `${meal.date}-${meal.slot}-${meal.forWhom}`}
             meal={meal}
-            log={meal.id ? logByMealId.get(meal.id) : undefined}
+            log={logFor(meal)}
+            profile={profile}
             onLogged={onLogged}
           />
         ))
