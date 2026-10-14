@@ -403,3 +403,342 @@ button.chip {
     order: 2;
   }
 }
+
+/* ---- Week: calendar + the day's plan ------------------------------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.btn.sm {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.week-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.day-head h2 {
+  font-size: 22px;
+}
+
+.day-head p {
+  margin: 2px 0 14px;
+  color: var(--muted);
+}
+
+/* Calendar. On a phone the days are a scrollable strip. */
+.cal-head {
+  display: none;
+}
+
+.daylist {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.day-item {
+  flex: 1 0 auto;
+  min-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.day-item.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.day-when {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.day-num {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.day-text {
+  display: none;
+}
+
+.day-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  box-sizing: border-box;
+  opacity: 0.6;
+}
+
+.day-dot.on {
+  background: currentColor;
+  opacity: 1;
+}
+
+/* The day: a person-by-meal grid inside one card. */
+.plan-card {
+  padding: 16px;
+}
+
+.plan-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plan-colhead {
+  display: none;
+}
+
+.plan-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-label {
+  font-weight: 600;
+}
+
+.plan-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+}
+
+.plan-cell.dinner {
+  border: 2px solid var(--accent);
+  background: var(--accent-tint);
+  gap: 6px;
+  padding: 12px;
+}
+
+.plan-cell .who {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.plan-dish {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.plan-empty {
+  color: var(--muted);
+}
+
+.dinner-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dinner-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cell-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.link-btn {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dish-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.dish-editor .text-input {
+  width: 100%;
+}
+
+.dish-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.finalise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+@media (min-width: 720px) {
+  .plan-grid {
+    display: grid;
+    grid-template-columns: 96px repeat(3, minmax(0, 1fr));
+    gap: 12px 10px;
+  }
+
+  .plan-colhead {
+    display: block;
+    font-weight: 600;
+  }
+
+  /* each row is a subgrid of the four columns, so cells in a row share a height */
+  .plan-row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .plan-label {
+    padding-top: 10px;
+  }
+
+  .plan-span-2 {
+    grid-column: span 2;
+    display: flex;
+  }
+
+  .plan-span-2 > .plan-cell {
+    flex: 1;
+  }
+
+  .plan-cell .who {
+    display: none;
+  }
+}
+
+/* Wide: the calendar is a card on the left, the day opens on the right. */
+@media (min-width: 900px) {
+  .week-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .cal {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .cal-head {
+    display: block;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+  }
+
+  .daylist {
+    flex-direction: column;
+    gap: 0;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .day-item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 0;
+    border-bottom: 1px solid var(--line-soft);
+    border-radius: 0;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .day-item:last-child {
+    border-bottom: 0;
+  }
+
+  .day-item.selected {
+    background: var(--accent-tint);
+    color: var(--ink);
+  }
+
+  .day-when {
+    flex: 0 0 52px;
+    align-items: flex-start;
+  }
+
+  .day-name {
+    font-weight: 600;
+  }
+
+  .day-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-dish {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .day-sub {
+    color: var(--muted);
+    font-size: 12px;
+  }
+}

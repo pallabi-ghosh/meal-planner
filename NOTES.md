@@ -112,3 +112,18 @@ add your own notes. Add freely below any section.
 - **MP2-5 done:** usual meals per person in `data/taste/<id>.md` (hand-editable; other sections preserved).
   Child dinner is a pool. Ingredient suggestion via Ollama, filtered by the child's rules.
 - Found while testing: saving one profile used to fail because all three were validated together. Fixed.
+- **MP2-6 done:** the Week screen. Calendar on the left (a day strip on phones), the day on the right with a
+  column per person. "Fill the week from usual meals" prefills breakfast/lunch/snack (weekday vs weekend aware,
+  rotating when there are several options) and the child's dinner from his pool. Adult dinners stay empty on
+  purpose: dinner is the decision. Anything can be edited in place; nothing already planned is overwritten.
+- Old plans are detected: a "Start this week's plan" action begins a fresh Monday-start week and keeps groceries.
+- Planning logic lives in `lib/plan.ts` as pure functions (22 checks passed in a throwaway script).
+
+- **MP2-6 restyle + MP2-8 (first part) done:** the Week screen now follows the approved wireframe: a calendar
+  card (a day strip on phones), the day's heading, a card with a column per person, and a dinner row where the
+  family dinner and the child's own dinner sit side by side. A "Finalise week" bar marks days that have a family
+  dinner as finalised (shows "Finalised" in the calendar); "Reopen week" undoes it. Stored as `finalisedDates`
+  on the week via `/api/week/finalise`.
+- Finalising does not yet change the grocery list; that comes with the grocery-by-date-range story (MP2-9/10).
+- Still to build on this screen: calories per meal and day totals, "Swap" with three alternatives, cuisine card
+  with dinner suggestions, cheat day, toddler-safe badge, previous/next week.

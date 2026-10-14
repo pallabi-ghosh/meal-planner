@@ -5,12 +5,14 @@ import type { GenerationResponse } from "@/types";
 
 interface GenerateButtonProps {
   onGenerated: (result: GenerationResponse) => void;
+  confirmMessage?: string; // asked before running, e.g. when it would replace the plan
 }
 
-export default function GenerateButton({ onGenerated }: GenerateButtonProps) {
+export default function GenerateButton({ onGenerated, confirmMessage }: GenerateButtonProps) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
     setLoading(true);
     try {
       const res = await fetch("/api/generate", { method: "POST" });

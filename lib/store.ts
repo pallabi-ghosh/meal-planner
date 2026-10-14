@@ -110,6 +110,34 @@ export function updateMeals(meals: Meal[]): Promise<StoredWeek> {
   });
 }
 
+// Begins a fresh, empty plan for the week starting on `startDate`. The grocery list
+// is a separate thing and is left exactly as it is.
+export function startNewWeek(startDate: string): Promise<StoredWeek> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const current = await getCurrentWeek();
+    const week: Week = {
+      startDate,
+      meals: [],
+      budgetTargetDKK: current.week?.budgetTargetDKK ?? 0,
+    };
+    const stored: StoredWeek = { week, grocery: current.grocery };
+    await writeJson(CURRENT_WEEK_PATH, stored);
+    return stored;
+  });
+}
+
+// Marks which days of the plan are finalised (locked in for grocery generation).
+// Returns null when there is no plan to finalise.
+export function setFinalisedDates(dates: string[]): Promise<Week | null> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const current = await getCurrentWeek();
+    if (!current.week) return null;
+    const week: Week = { ...current.week, finalisedDates: dates };
+    await writeJson(CURRENT_WEEK_PATH, { week, grocery: current.grocery } satisfies StoredWeek);
+    return week;
+  });
+}
+
 export async function getMealLogs(): Promise<MealLog[]> {
   return readJson<MealLog[]>(MEAL_LOGS_PATH, []);
 }

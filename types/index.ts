@@ -82,6 +82,7 @@ export interface Meal {
   dish: string;
   ingredients: string[];
   // v2 (all optional so v1 meals keep loading):
+  source?: "usual" | "generated" | "manual";        // where this meal came from
   recipe?: Recipe;                                  // structured; drives grocery quantities + calories
   portionShare?: Partial<Record<ProfileId, number>>; // e.g. { him: 1, her: 1, toddler: 0.3 }
   toddlerSafe?: boolean;
