@@ -127,3 +127,44 @@ add your own notes. Add freely below any section.
 - Finalising does not yet change the grocery list; that comes with the grocery-by-date-range story (MP2-9/10).
 - Still to build on this screen: calories per meal and day totals, "Swap" with three alternatives, cuisine card
   with dinner suggestions, cheat day, toddler-safe badge, previous/next week.
+- **Week screen, desktop polish (16 Oct):** column heads show each adult's daily calorie target (worked out from
+  sex, age, height, weight and activity; no weight means a healthy-BMI assumption). Every meal can carry an
+  optional calorie number, shown under the dish. A Day total row shows each person's total against target with a
+  bar (amber over 10%, red over 25%, set in the household thresholds). The calendar shows a +% pill on days where
+  an adult is over. The child has no target, only an estimate.
+- **Cheat day:** one tick-box per week; the day goes green in the calendar and is exempt from warnings.
+- Family dinner counts toward both adults' totals; the child's own dinner counts toward his.
+- Calories are typed in by hand for now. AI estimates (MP2-14/16) come later.
+- Week arrows (previous/next week) are not built: the app keeps one current week, so that needs week history.
+- **MP2-7 (first version), MP2-17, MP2-21 (badge), calorie estimates done (16 Oct):**
+  - *Cuisine card:* a cuisine for the week, plus an optional different one for the selected day. "Suggest the N open
+    dinners" fills every empty dinner from today onwards, one request per cuisine. The calendar labels suggested
+    dinners with their cuisine.
+  - *Ideas come from two places:* the local AI model first; if it gives too little (or is off) a built-in list of
+    about 40 dinners across 7 cuisines tops it up. The screen says which one was used.
+  - *Swap:* three alternatives for the day's dinner, "Use this" in one tap, "Show others" for more.
+  - *Not toddler-safe badge:* worked out by fixed rules (chilli, salty things, sugar, whole nuts, allergens from the
+    child's profile), never by the AI, because it's a safety flag. Tested with 10 checks.
+  - *Calorie estimates:* "Estimate calories" in the edit box, and "Estimate the N missing figures" for a day. The
+    built-in list is used where it knows the dish; otherwise the AI, with believable limits per meal type. They are
+    estimates; the 3B model is shaky, so it asks twice and reports "Estimated X of Y".
+- Lesson: the small local model got a kebab box wrong (1,500 kcal) until I added sanity limits. Anything the model
+  produces needs checks around it.
+- Cuisine card sits under the calendar on wide screens; on a phone it will need a better place (mobile pass later).
+- **MP2-9 and MP2-10 done (16 Oct): the Grocery tab.** Pick From and To dates (it starts with the finalised days,
+  or the whole week if none). The engine adds up amounts per item (g with kg, ml with l, counts, tsp and so on),
+  folds plurals (tomato/tomatoes), leaves out pantry items and sorts by shop aisle. Tick an item and it is written
+  to a "bought" ledger (`data/pantry.json`) for that range, so it stays ticked and disappears from later ranges
+  that it covers. "In the pantry" is a short list you manage by hand. 15 checks passed on the engine.
+- Ingredients with no amount ("onion") count once per meal, so the list says "3" not "1.5 kg". Real quantities
+  need structured recipes, which the AI suggestions don't produce yet.
+- Hand-added items and the email moved under "Extras". Making the email follow the date range is MP2-25.
+- **Grocery on a desktop screen (16 Oct):** it was a narrow column on the left with the rest empty. Now it is two
+  columns on wide screens: the date range, progress and pantry on the left, the aisles as cards on the right
+  (3 across on very wide screens, 1 on a phone).
+- **MP2-11 (first part) done:** the app can be added to a phone's home screen: manifest, a green plate icon,
+  `apple-touch-icon`, full-screen mode and theme colour. On iPhone: Safari, Share, Add to Home Screen.
+- Lesson: an `app/manifest.ts` file made every page fail in this dev setup ("require is not defined"). A plain
+  `public/manifest.webmanifest` file works, so that is what's used.
+- Not done for MP2-11: HTTPS. iPhone only gives a true full-screen install over HTTPS, and plain http over the
+  Tailscale IP can add a bookmark-style shortcut. The Tailscale HTTPS option (`tailscale serve`) is the next try.

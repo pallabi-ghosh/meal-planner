@@ -4,9 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAppData } from "@/app/components/AppData";
 import GenerateButton from "@/app/components/GenerateButton";
+import { dailyTarget, dayTotal, loadLevel, overPct } from "@/lib/calories";
+import Alternatives, { type Alternative } from "@/app/components/week/Alternatives";
+import CuisineCard from "@/app/components/week/CuisineCard";
 import DayList from "@/app/components/week/DayList";
 import DayPlan, { type MealChange } from "@/app/components/week/DayPlan";
-import { PROFILE_ORDER, addDays, fillDefaults, longDate, mondayOf, rangeLabel, sharedMeal, todayISO, weekDates, weekdayName } from "@/lib/plan";
+import { toddlerIssues } from "@/lib/toddler";
+import type { DinnerIdea } from "@/lib/dishes";
+import { PLAN_SLOTS, PROFILE_ORDER, addDays, fillDefaults, longDate, mealFor, mondayOf, rangeLabel, sharedMeal, todayISO, weekDates, weekdayName } from "@/lib/plan";
 import type { UsualMeals } from "@/lib/taste";
 import type { GenerationResponse, Meal, ProfileId } from "@/types";
 
@@ -18,6 +23,10 @@ export default function WeekPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [estimating, setEstimating] = useState(false);
+  const [alts, setAlts] = useState<{ date: string; ideas: Alternative[]; loading: boolean; note: string | null } | null>(null);
 
   // Everyone's usual meals feed the prefilled breakfast, lunch, snack and child dinner.
   useEffect(() => {
@@ -53,6 +62,51 @@ export default function WeekPage() {
     him: household?.profiles.find((p) => p.id === "him")?.name ?? "Him",
     toddler: household?.profiles.find((p) => p.id === "toddler")?.name ?? "Child",
   };
+
+  const targets: Record<ProfileId, number | null> = {
+    her: dailyTarget(household?.profiles.find((p) => p.id === "her")),
+    him: dailyTarget(household?.profiles.find((p) => p.id === "him")),
+    toddler: null,
+  };
+
+  const thresholds = household?.calorieThresholds ?? { amberPct: 10, redPct: 25 };
+
+  // Days where an adult is over target (the cheat day is exempt). Shown as a pill in the calendar.
+  const flags: Record<string, { pct: number; level: "amber" | "red" }> = {};
+  for (const date of dates) {
+    if (date === week?.cheatDay) continue;
+    for (const who of ["her", "him"] as const) {
+      const target = targets[who];
+      const { total } = dayTotal(meals, date, who);
+      if (!target || total === 0) continue;
+      const level = loadLevel(total, target, thresholds);
+      if (level === "ok") continue;
+      const pct = overPct(total, target);
+      if (!flags[date] || pct > flags[date].pct) flags[date] = { pct, level };
+    }
+  }
+
+  const childRules = household?.profiles.find((p) => p.id === "toddler")?.childRules;
+  const cuisineOf = (date: string) => week?.cuisine?.byDate?.[date] ?? week?.cuisine?.week ?? "";
+  const cuisines: Record<string, string> = {};
+  for (const date of dates) {
+    // Only label dinners we know the style of: suggested ones, or a day with its own cuisine.
+    const dinner = sharedMeal(meals, date, "dinner");
+    if (dinner && cuisineOf(date) && (dinner.source === "generated" || week?.cuisine?.byDate?.[date])) cuisines[date] = cuisineOf(date);
+  }
+  const openDates = dates.filter((date) => date >= today && !sharedMeal(meals, date, "dinner"));
+
+  // Meals on a day that still have no calorie figure (each meal counted once).
+  function missingKcalMeals(date: string): Meal[] {
+    const found = new Map<string, Meal>();
+    for (const who of PROFILE_ORDER) {
+      for (const slot of PLAN_SLOTS) {
+        const meal = mealFor(meals, date, slot, who) ?? (slot === "dinner" && who !== "toddler" ? sharedMeal(meals, date, slot) : undefined);
+        if (meal?.id && meal.kcal === undefined) found.set(meal.id, meal);
+      }
+    }
+    return [...found.values()];
+  }
 
   const gapCount = week ? fillDefaults({ dates, usual, meals, makeId: () => "" }).length : 0;
   const hasAnyUsual = PROFILE_ORDER.some((id) => {
@@ -112,16 +166,141 @@ export default function WeekPage() {
       if (index >= 0) saveMeals(meals.filter((_, i) => i !== index));
       return;
     }
+    // Changing only the calories keeps what the meal already knows (its ingredients and "usual" tag).
+    const before = index >= 0 && meals[index].dish === dish ? meals[index] : undefined;
     const updated: Meal = {
       id: index >= 0 ? meals[index].id : crypto.randomUUID(),
       date: change.date,
       slot: change.slot,
       forWhom: change.who,
       dish,
-      ingredients: change.ingredients ?? [],
-      source: change.source ?? "manual",
+      ingredients: change.ingredients ?? before?.ingredients ?? [],
+      source: before?.source ?? change.source ?? "manual",
+      ...(change.kcal ? { kcal: change.kcal } : {}),
     };
     saveMeals(index >= 0 ? meals.map((m, i) => (i === index ? updated : m)) : [...meals, updated]);
+  }
+
+  async function fetchIdeas(count: number, cuisine: string, exclude: string[]): Promise<{ dishes: DinnerIdea[]; source: string } | null> {
+    try {
+      const res = await fetch("/api/dinners/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuisine, count, exclude }),
+      });
+      const data = await res.json();
+      return data.ok ? { dishes: data.dishes as DinnerIdea[], source: data.source as string } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const sourceNote = (sources: string[]) =>
+    sources.every((src) => src === "builtin")
+      ? "from the built-in ideas, because the AI model wasn't available"
+      : sources.some((src) => src !== "ai")
+        ? "from the AI model, topped up with built-in ideas"
+        : "from the AI model";
+
+  async function saveCuisine(weekCuisine: string, dayCuisine: string) {
+    const byDate = { ...(week?.cuisine?.byDate ?? {}) };
+    if (dayCuisine) byDate[selectedDate] = dayCuisine;
+    else delete byDate[selectedDate];
+    await send("/api/week/cuisine", { week: weekCuisine, byDate });
+  }
+
+  // Fills every open dinner, one request per cuisine so a Thursday exception gets its own style.
+  async function suggestOpen() {
+    setNotice(null);
+    setMessage(null);
+    if (openDates.some((date) => !cuisineOf(date))) {
+      setMessage("Pick a cuisine for the week first (or one for each open day).");
+      return;
+    }
+    setSuggesting(true);
+    const exclude = meals.filter((m) => m.slot === "dinner" && m.forWhom === "household").map((m) => m.dish);
+    const added: Meal[] = [];
+    const sources: string[] = [];
+    try {
+      for (const cuisine of [...new Set(openDates.map(cuisineOf))]) {
+        const forCuisine = openDates.filter((date) => cuisineOf(date) === cuisine);
+        const result = await fetchIdeas(forCuisine.length, cuisine, exclude);
+        if (!result) {
+          setMessage("Couldn't get suggestions. Check the Mac is on and try again.");
+          return;
+        }
+        sources.push(result.source);
+        forCuisine.forEach((date, i) => {
+          const idea = result.dishes[i];
+          if (!idea) return;
+          exclude.push(idea.dish);
+          added.push({
+            id: crypto.randomUUID(),
+            date,
+            slot: "dinner",
+            forWhom: "household",
+            dish: idea.dish,
+            ingredients: idea.ingredients,
+            source: "generated",
+            ...(idea.kcal ? { kcal: idea.kcal } : {}),
+          });
+        });
+      }
+      if (added.length > 0 && (await saveMeals([...meals, ...added]))) {
+        setNotice(`Suggested ${added.length} ${added.length === 1 ? "dinner" : "dinners"} ${sourceNote(sources)}. Swap any you don't like.`);
+      }
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  async function loadAlternatives(date: string, avoid: string[] = []) {
+    setAlts((current) => ({ date, ideas: current?.date === date ? current.ideas : [], loading: true, note: null }));
+    const exclude = [...meals.filter((m) => m.slot === "dinner" && m.forWhom === "household").map((m) => m.dish), ...avoid];
+    const result = await fetchIdeas(3, cuisineOf(date), exclude);
+    setAlts({
+      date,
+      loading: false,
+      ideas: (result?.dishes ?? []).map((idea) => ({ ...idea, issues: toddlerIssues(idea.dish, idea.ingredients, childRules) })),
+      note: !result
+        ? "Couldn't get ideas. Check the Mac is on and try again."
+        : !cuisineOf(date)
+          ? "No cuisine is set for this day, so these are mixed ideas."
+          : `Ideas ${sourceNote([result.source])}.`,
+    });
+  }
+
+  function useAlternative(idea: Alternative) {
+    if (!alts) return;
+    changeMeal({ date: alts.date, slot: "dinner", who: "household", dish: idea.dish, ingredients: idea.ingredients, kcal: idea.kcal, source: "generated" });
+    setAlts(null);
+  }
+
+  async function estimateMissing(date: string) {
+    const targets = missingKcalMeals(date);
+    if (targets.length === 0) return;
+    setNotice(null);
+    setMessage(null);
+    setEstimating(true);
+    try {
+      const res = await fetch("/api/estimate-kcal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: targets.map((m) => ({ id: m.id, dish: m.dish, forChild: m.forWhom === "toddler", slot: m.slot })) }),
+      });
+      const estimates = ((await res.json()).estimates ?? {}) as Record<string, { kcal: number }>;
+      const found = targets.filter((m) => m.id && estimates[m.id]).length;
+      if (found === 0) {
+        setMessage("Couldn't estimate this time. Is Ollama running? You can type the calories in.");
+        return;
+      }
+      const next = meals.map((m) => (m.id && estimates[m.id] ? { ...m, kcal: estimates[m.id].kcal } : m));
+      if (await saveMeals(next)) setNotice(`Estimated ${found} of ${targets.length}. They are estimates, so edit any that look off.`);
+    } catch {
+      setMessage("Couldn't reach the planner. Check the Mac is on and try again.");
+    } finally {
+      setEstimating(false);
+    }
   }
 
   function handleGenerated(data: GenerationResponse) {
@@ -188,31 +367,78 @@ export default function WeekPage() {
       {week && selectedDate ? (
         <>
           <div className="week-layout">
-            <DayList
-              label={rangeLabel(week.startDate)}
-              dates={dates}
-              meals={meals}
-              finalised={finalised}
-              selected={selectedDate}
-              today={today}
-              onSelect={setSelected}
-            />
+            <aside className="week-side">
+              <DayList
+                label={rangeLabel(week.startDate)}
+                dates={dates}
+                meals={meals}
+                finalised={finalised}
+                cheatDay={week.cheatDay}
+                cuisines={cuisines}
+                flags={flags}
+                selected={selectedDate}
+                today={today}
+                onSelect={setSelected}
+              />
+              <CuisineCard
+                weekCuisine={week.cuisine?.week ?? ""}
+                dayCuisine={week.cuisine?.byDate?.[selectedDate] ?? ""}
+                dayLabel={weekdayName(selectedDate, "long")}
+                openCount={openDates.length}
+                busy={busy}
+                suggesting={suggesting}
+                onSave={saveCuisine}
+                onSuggest={suggestOpen}
+              />
+            </aside>
 
             <section>
-              <div className="day-head">
-                <h2>
-                  {weekdayName(selectedDate, "long")} {longDate(selectedDate)}
-                </h2>
-                <p>Dinner is the only decision. The rest fills in from everyone&rsquo;s usual meals.</p>
+              <div className="day-head day-head-row">
+                <div>
+                  <h2>
+                    {weekdayName(selectedDate, "long")} {longDate(selectedDate)}
+                  </h2>
+                  <p>Dinner is the only decision. The rest fills in from everyone&rsquo;s usual meals.</p>
+                </div>
+                <label className="cheat-toggle">
+                  <input
+                    type="checkbox"
+                    checked={week.cheatDay === selectedDate}
+                    disabled={busy}
+                    onChange={(e) => send("/api/week/cheat-day", { date: e.target.checked ? selectedDate : null })}
+                  />
+                  Make this the cheat day
+                </label>
               </div>
               <DayPlan
                 date={selectedDate}
                 meals={meals}
                 names={names}
+                targets={targets}
+                thresholds={thresholds}
+                cheat={week.cheatDay === selectedDate}
+                childRules={childRules}
                 childDinners={usual.toddler?.dinner ?? []}
                 busy={busy}
+                missingCount={missingKcalMeals(selectedDate).length}
+                estimating={estimating}
+                onSwap={() => loadAlternatives(selectedDate)}
+                onEstimateMissing={() => estimateMissing(selectedDate)}
                 onChange={changeMeal}
               />
+
+              {alts && alts.date === selectedDate ? (
+                <Alternatives
+                  title={`3 alternatives for ${weekdayName(selectedDate, "long")}'s dinner`}
+                  ideas={alts.ideas}
+                  loading={alts.loading}
+                  note={alts.note}
+                  busy={busy}
+                  onUse={useAlternative}
+                  onMore={() => loadAlternatives(selectedDate, alts.ideas.map((i) => i.dish))}
+                  onClose={() => setAlts(null)}
+                />
+              ) : null}
 
               <div className="card finalise">
                 <div>
@@ -239,13 +465,14 @@ export default function WeekPage() {
         </>
       ) : null}
 
+      {notice ? <div className="note" style={{ marginTop: 12 }}>{notice}</div> : null}
       {message ? <div className="error">{message}</div> : null}
 
       <details className="box" style={{ marginTop: 16 }}>
         <summary style={{ cursor: "pointer", fontWeight: 500 }}>Generate a whole week with AI instead</summary>
         <div className="small" style={{ margin: "8px 0" }}>
-          Replaces the current plan with a generated one and emails it. Dinner suggestions that respect the usual
-          meals are coming next.
+          Replaces the current plan with a generated one and emails it. For one dinner at a time, use Suggest or Swap
+          above.
         </div>
         <GenerateButton
           onGenerated={handleGenerated}

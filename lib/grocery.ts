@@ -2,10 +2,10 @@ import type { Meal, GroceryItem, PantryItem } from "@/types";
 
 const categoryRules: Array<{ category: string; keywords: string[] }> = [
   { category: "Produce", keywords: ["tomato", "onion", "garlic", "pepper", "spinach", "lettuce", "cucumber", "carrot", "potato", "mushroom", "apple", "banana", "lemon", "lime", "avocado", "cabbage", "broccoli", "zucchini", "eggplant", "parsley", "cilantro", "ginger", "celery", "greens"] },
-  { category: "Dairy", keywords: ["cheese", "yogurt", "butter", "milk", "cream", "egg"] },
+  { category: "Dairy", keywords: ["cheese", "yogurt", "butter", "milk", "cream", "egg", "ghee", "curd", "paneer"] },
   { category: "Meat & Fish", keywords: ["chicken", "salmon", "fish", "beef", "turkey", "pork", "bacon", "sausage", "ham", "shrimp", "tuna", "burger", "meat"] },
   { category: "Bakery", keywords: ["bread", "toast", "pita", "bun", "wrap", "tortilla", "bagel", "croissant", "roti", "naan"] },
-  { category: "Pantry", keywords: ["rice", "pasta", "lentil", "bean", "peas", "cereal", "oil", "flour", "sugar", "soy", "stock", "broth", "sauce", "coconut", "tahini", "hummus", "nut", "spice", "curry", "noodle", "oats", "mayo"] },
+  { category: "Pantry", keywords: ["rice", "pasta", "lentil", "bean", "peas", "cereal", "oil", "flour", "sugar", "soy", "stock", "broth", "sauce", "coconut", "tahini", "hummus", "nut", "spice", "curry", "noodle", "oats", "mayo", "salt", "cumin", "cardamom", "turmeric", "masala", "cinnamon", "mustard", "vinegar", "honey", "jam", "couscous", "chickpea", "dal"] },
   { category: "Frozen", keywords: ["frozen", "frys", "fries"] },
   { category: "Beverages", keywords: ["coffee", "tea", "juice", "water"] },
   { category: "Household", keywords: ["soap", "shampoo", "toothpaste", "toilet paper", "tissue", "detergent", "cleaner", "cleaning", "sponge", "foil", "cling film", "bin bag", "trash bag", "paper towel", "deodorant", "toiletries", "napkin", "dish soap", "washing"] },

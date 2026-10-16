@@ -144,6 +144,14 @@ All routes return JSON.
 | Route | Method | Purpose |
 | --- | --- | --- |
 | `/api/week` | GET / POST | GET: current week, grocery list and meal logs. POST `{ startDate }`: start a new, empty plan (the grocery list is kept) |
+| `/api/week/finalise` | POST | `{ dates }`: mark days as finalised (an empty list reopens the week) |
+| `/api/week/cheat-day` | POST | `{ date }` or `{ date: null }`: set or clear the week's cheat day |
+| `/api/week/cuisine` | POST | `{ week, byDate }`: the week's cuisine and per-day exceptions |
+| `/api/dinners/suggest` | POST | `{ cuisine, count, exclude }` → dinner ideas (AI first, built-in list as back-up) |
+| `/api/estimate-kcal` | POST | `{ items: [{ id, dish, forChild, slot }] }` → calorie estimates (built-in list, then AI) |
+| `/api/grocery/range` | GET | `?from=&to=` → what to buy for those days (amounts added up, pantry items left out, bought items ticked) |
+| `/api/grocery/bought` | POST | `{ name, bought, from, to }`: tick or untick an item for a range |
+| `/api/pantry` | GET / POST | Pantry items: `{ name }` adds, `{ remove: id }` removes |
 | `/api/generate` | POST | Run the agent, validate, build the grocery list, save, email |
 | `/api/meals` | POST | Replace the week's meals (`{ meals }`) |
 | `/api/grocery` | POST | Replace the grocery list (`{ grocery }`) |
@@ -180,10 +188,13 @@ v2 builds on the current app:
 - [x] Per-person taste files (Markdown) with usual meals and weekday/weekend tags; calmer, responsive design
 - [x] Week calendar with a person-by-meal grid, prefilled from usual meals, child's dinner chosen from his pool
 - [x] Week screen matches the v2 wireframe layout, with "Finalise week" / "Reopen week" per day
-- [ ] Cuisine input with dinner suggestions, three alternatives for any meal, cheat day
-- [ ] Grocery for any date range, subtracting pantry and already-bought items
+- [x] Calorie targets from profiles, calories per meal (typed in for now), Day total bars with amber/red, cheat day
+- [x] Cuisine for the week (with per-day exceptions), "Suggest the open dinners", "Swap" with three alternatives, "not toddler-safe" badge, calorie estimates
+- [ ] Portion shares for the child, calories from a nutrition database instead of AI estimates
+- [x] Grocery for any date range, subtracting pantry and already-bought items, with tick-off
 - [ ] Natural-language logging with calorie estimates, and taste-file change proposals you approve
-- [ ] Installable on a phone home screen, with live tick-off sync between devices
+- [x] Home-screen install metadata (manifest, icons, full-screen on iPhone)
+- [ ] Offline support and HTTPS for a full install on Android, and live tick-off sync between devices
 
 Design notes live in [`docs/`](docs/).
 

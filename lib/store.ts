@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { GroceryItem, Household, Meal, MealLog, Preference, ProfileId, Scope, SeedData, Week } from "@/types";
+import type { BoughtEntry, GroceryItem, Household, Meal, MealLog, PantryData, Preference, ProfileId, Scope, SeedData, Week } from "@/types";
+import { itemKey } from "@/lib/groceryRange";
 import { parseTasteFile, serialiseTasteFile, type TasteFile, type UsualMeals } from "@/lib/taste";
 
 // Personal, single-family app — plain JSON files are the storage layer.
@@ -12,6 +13,7 @@ const MEAL_LOGS_PATH = path.join(DATA_DIR, "meal-logs.json");
 const PREFERENCES_PATH = path.join(DATA_DIR, "seed-preferences.json");
 const HOUSEHOLD_PATH = path.join(DATA_DIR, "household.json");
 const TASTE_DIR = path.join(DATA_DIR, "taste");
+const PANTRY_PATH = path.join(DATA_DIR, "pantry.json");
 
 async function readJson<T>(filePath: string, fallback: T): Promise<T> {
   try {
@@ -133,6 +135,29 @@ export function setFinalisedDates(dates: string[]): Promise<Week | null> {
     const current = await getCurrentWeek();
     if (!current.week) return null;
     const week: Week = { ...current.week, finalisedDates: dates };
+    await writeJson(CURRENT_WEEK_PATH, { week, grocery: current.grocery } satisfies StoredWeek);
+    return week;
+  });
+}
+
+// One cheat day per week at most; `null` clears it.
+export function setCheatDay(date: string | null): Promise<Week | null> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const current = await getCurrentWeek();
+    if (!current.week) return null;
+    const { cheatDay: _old, ...rest } = current.week;
+    const week: Week = date ? { ...rest, cheatDay: date } : rest;
+    await writeJson(CURRENT_WEEK_PATH, { week, grocery: current.grocery } satisfies StoredWeek);
+    return week;
+  });
+}
+
+// The week's cuisine, and optional per-day exceptions ("Italian on Thursday").
+export function setCuisine(cuisine: { week?: string; byDate?: Record<string, string> }): Promise<Week | null> {
+  return serialised(CURRENT_WEEK_PATH, async () => {
+    const current = await getCurrentWeek();
+    if (!current.week) return null;
+    const week: Week = { ...current.week, cuisine };
     await writeJson(CURRENT_WEEK_PATH, { week, grocery: current.grocery } satisfies StoredWeek);
     return week;
   });
@@ -276,5 +301,58 @@ export function saveUsualMeals(profileId: ProfileId, defaultTitle: string, usual
     await writeFile(tmpPath, serialiseTasteFile(next), "utf-8");
     await rename(tmpPath, filePath);
     return next;
+  });
+}
+
+// ---- Pantry and the bought ledger -------------------------------------------
+// The pantry only tracks "we have this" (quantity 1). The ledger records what was ticked off
+// as bought, and which days that purchase covers.
+
+export async function getPantry(): Promise<PantryData> {
+  return readJson<PantryData>(PANTRY_PATH, { stock: [], bought: [] });
+}
+
+export function addPantryItem(name: string): Promise<PantryData> {
+  return serialised(PANTRY_PATH, async () => {
+    const pantry = await getPantry();
+    if (!pantry.stock.some((item) => itemKey(item.name) === itemKey(name))) {
+      pantry.stock.push({ id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, name, quantity: 1, unit: "pcs", updatedAt: new Date().toISOString() });
+      await writeJson(PANTRY_PATH, pantry);
+    }
+    return pantry;
+  });
+}
+
+export function removePantryItem(id: string): Promise<PantryData> {
+  return serialised(PANTRY_PATH, async () => {
+    const pantry = await getPantry();
+    pantry.stock = pantry.stock.filter((item) => item.id !== id);
+    await writeJson(PANTRY_PATH, pantry);
+    return pantry;
+  });
+}
+
+// Tick (bought) or untick an item for a range of days. Unticking removes any purchase of that
+// item that overlaps the range.
+export function setBought(name: string, bought: boolean, from: string, to: string): Promise<PantryData> {
+  return serialised(PANTRY_PATH, async () => {
+    const pantry = await getPantry();
+    const key = itemKey(name);
+    const overlaps = (entry: BoughtEntry) =>
+      itemKey(entry.name) === key && entry.coversFrom !== undefined && entry.coversTo !== undefined && entry.coversFrom <= to && entry.coversTo >= from;
+    pantry.bought = pantry.bought.filter((entry) => !overlaps(entry));
+    if (bought) {
+      pantry.bought.push({
+        id: `b_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        quantity: 1,
+        unit: "pcs",
+        boughtAt: new Date().toISOString(),
+        coversFrom: from,
+        coversTo: to,
+      });
+    }
+    await writeJson(PANTRY_PATH, pantry);
+    return pantry;
   });
 }

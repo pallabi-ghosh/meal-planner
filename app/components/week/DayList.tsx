@@ -9,6 +9,9 @@ export default function DayList({
   dates,
   meals,
   finalised,
+  cheatDay,
+  cuisines,
+  flags,
   selected,
   today,
   onSelect,
@@ -17,6 +20,9 @@ export default function DayList({
   dates: string[];
   meals: Meal[];
   finalised: string[];
+  cheatDay?: string;
+  cuisines?: Record<string, string>;
+  flags?: Record<string, { pct: number; level: "amber" | "red" }>;
   selected: string;
   today: string;
   onSelect: (date: string) => void;
@@ -29,13 +35,15 @@ export default function DayList({
           const dinner = sharedMeal(meals, date, "dinner");
           const isSelected = date === selected;
           const isFinalised = Boolean(dinner) && finalised.includes(date);
+          const isCheat = date === cheatDay;
+          const sub = [cuisines?.[date] ?? null, isCheat ? "Cheat day" : null, isFinalised ? "Finalised" : null].filter(Boolean).join(" · ");
           return (
             <button
               key={date}
               type="button"
-              className={`day-item${isSelected ? " selected" : ""}`}
+              className={`day-item${isSelected ? " selected" : ""}${isCheat ? " cheat" : ""}`}
               aria-pressed={isSelected}
-              aria-label={`${weekdayName(date, "long")} ${dayOfMonth(date)}${dinner ? `, dinner ${dinner.dish}` : ", dinner not chosen"}${isFinalised ? ", finalised" : ""}`}
+              aria-label={`${weekdayName(date, "long")} ${dayOfMonth(date)}${dinner ? `, dinner ${dinner.dish}` : ", dinner not chosen"}${isCheat ? ", cheat day" : ""}${isFinalised ? ", finalised" : ""}`}
               onClick={() => onSelect(date)}
             >
               <span className="day-when">
@@ -46,9 +54,13 @@ export default function DayList({
                 <span className="day-dish" style={dinner ? undefined : { color: "var(--muted)" }}>
                   {dinner ? dinner.dish : "Dinner not chosen"}
                 </span>
-                {isFinalised ? <span className="day-sub">Finalised</span> : null}
+                {sub ? <span className="day-sub">{sub}</span> : null}
               </span>
-              <span className={`day-dot${dinner ? " on" : ""}`} aria-hidden="true" />
+              {flags?.[date] ? (
+                <span className={`day-pill ${flags[date].level}`}>+{flags[date].pct}%</span>
+              ) : (
+                <span className={`day-dot${dinner ? " on" : ""}`} aria-hidden="true" />
+              )}
             </button>
           );
         })}

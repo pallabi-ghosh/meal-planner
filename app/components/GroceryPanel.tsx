@@ -138,7 +138,6 @@ export default function GroceryPanel({ grocery, onChanged }: GroceryPanelProps) 
 
   return (
     <>
-      <div className="label">Grocery list (this week)</div>
       {grocery.length === 0 ? (
         <div className="box">No items yet — add what you need below, or generate a week to prefill it.</div>
       ) : (
